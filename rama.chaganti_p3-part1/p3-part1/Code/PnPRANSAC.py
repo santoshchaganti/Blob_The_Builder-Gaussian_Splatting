@@ -52,10 +52,26 @@ def LinearPnP(X, x, K):
     x = x.to_numpy()
 
     # Construct the linear system A from the correspondences
+    n = X.shape[0]
+    A = np.zeros((2*n, 12))
     
+    for i in range(n):
+        X_i = np.concatenate((X[i, 1:], [1]))  # Convert to homogeneous coordinates
+        u = x[i, 1]
+        v = x[i, 2]
+        
+        # Fill A matrix based on the equations from the lecture
+        A[2*i] = np.concatenate([np.zeros(4), -X_i, v*X_i])
+        A[2*i + 1] = np.concatenate([X_i, np.zeros(4), -u*X_i])
     
     # Solve the linear system using Singular Value Decomposition (SVD)
     # Last column of V gives the solution for P
+    _, _, V = np.linalg.svd(A)
+    p = V[-1, :]  # Get last row of V
+    P = p.reshape(3, 4)  # Reshape into 3x4 projection matrix
+    
+    # Recover the calibrated projection matrix
+    P = np.linalg.inv(K) @ P
     
     return P
 
@@ -78,27 +94,44 @@ def PnPRANSAC(Xset, xset, K, M=2000, T=10):
     - Inlier: List of inlier 3D points.
     """
     
-    
     # List to store the largest set of inliers
+    best_inliers = []
     # Total number of correspondences
+    n_points = len(Xset)
     
     for i in tqdm(range(M)):
         # Randomly select 6 2D-3D pairs
+        sample_indices = random.sample(range(n_points), 6)
                 
         # Extract subsets of 3D and 2D points
+        X_subset = Xset.iloc[sample_indices]
+        x_subset = xset.iloc[sample_indices]
 
         # Estimate projection matrix P using LinearPnP with the selected points
+        P = LinearPnP(X_subset, x_subset, K)
         
         # Calculate inliers by checking reprojection error for all points
-            
+        current_inliers = []
+        for j in range(n_points):
             # Calculate reprojection error
+            error = CalReprojErr(Xset.iloc[j].values, xset.iloc[j].values, P)
             
             # If error is below threshold T, consider it as an inlier
+            if error < T:
+                current_inliers.append(j)
         
         # Update inlier set if the current inlier count is the highest found so far
-        
+        if len(current_inliers) > len(best_inliers):
+            best_inliers = current_inliers
+            Pnew = P
+    
     # Decompose Pnew to obtain rotation R and camera center C
+    R = Pnew[:, :3]
+    t = Pnew[:, 3]
+    Cnew = -np.linalg.inv(R) @ t.reshape(3, 1)
     
     # Enforce orthogonality of R
+    U, _, Vt = np.linalg.svd(R)
+    Rnew = U @ Vt
     
-    return Cnew, Rnew, Inlier  # Return the estimated camera center, rotation matrix, and inliers
+    return Cnew, Rnew, best_inliers  # Return the estimated camera center, rotation matrix, and inliers

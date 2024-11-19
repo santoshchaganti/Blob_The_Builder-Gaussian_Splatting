@@ -25,14 +25,18 @@ def GetInliersRANSAC(x1All, x2All, M=1500, T=0.5):
  
     # RANSAC iterations
     for i in tqdm(range(M)):
+        
         # Step 1: Randomly select 8 pairs of points from the source and target images
         random_indices = np.random.choice(len(x1All), 8, replace=False)
+        
         # Extract coordinates without IDs for Fundamental matrix estimation
         x1 = x1All.iloc[random_indices, :]
         x2 = x2All.iloc[random_indices, :]
+        
         # Step 2: Estimate the Fundamental matrix F from the selected 8-point subsets
         # Call EstimateFundamentalMatrix function here.
         F = EstimateFundamentalMatrix(x1, x2)
+        
         # Step 3: Check each point pair to see if it satisfies the epipolar constraint
         inliers = []
         for j in range(len(x1All)):

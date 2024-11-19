@@ -1,5 +1,6 @@
 from numpy import linalg as LA
 import numpy as np
+
 # Function to compute the Essential Matrix from the Fundamental Matrix
 def EssentialMatrixFromFundamentalMatrix(F, K):
     """
@@ -22,6 +23,7 @@ def EssentialMatrixFromFundamentalMatrix(F, K):
 
     # Apply Singular Value Decomposition (SVD) to E to enforce constraints for a valid Essential matrix
     U, S, Vh = LA.svd(E, full_matrices=True)
+    
     # Essential matrix constraint: Enforce two singular values to be 1 and the third to be 0
     # This is because an Essential matrix has a rank of 2 and two equal non-zero singular values.
     S = np.diag(S)

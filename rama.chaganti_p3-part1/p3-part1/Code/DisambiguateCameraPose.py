@@ -26,6 +26,8 @@ def DisambiguateCameraPose(Cset, Rset, Xset):
     # Iterate over each candidate pose
     for Cseti, Rseti, Xseti in zip(Cset, Rset, Xset):       
         # Extract the third row of the rotation matrix (Z-axis direction)
+        r3 = Rseti[2]
+        r30 = Rset0[2]
         
         count = 0  # Initialize count of points with positive depth
 
@@ -33,16 +35,26 @@ def DisambiguateCameraPose(Cset, Rset, Xset):
         for Xi in Xseti:
             # Transpose the 3D point to align with calculation
             # Convert 3D point to a column vector [X, Y, Z]
+            X = Xi[1:].reshape(3,1)
             
             # Check if the point is in front of both the candidate and reference cameras
             # The depth check is performed in the camera coordinate system
-                # If true: Increment count if the point has positive depth in both systems
+            depth1 = r3 @ (X - Cseti)
+            depth2 = r30 @ (X - Cset0)
+            
+            # If true: Increment count if the point has positive depth in both systems
+            if depth1 > 0 and depth2 > 0:
+                count += 1
                 
         # Store the count of positive depth points for the current pose
+        countList.append(count)
     
     # Find the candidate pose with the maximum count of points with positive depth
-
+    max_index = np.argmax(countList)
 
     # Select the pose with the highest positive depth count as the correct pose
+    C = Cset[max_index]
+    R = Rset[max_index] 
+    X = Xset[max_index]
 
     return C, R, X, max_index

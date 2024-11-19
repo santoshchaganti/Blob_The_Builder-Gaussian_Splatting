@@ -56,6 +56,12 @@ def BundleAdjustment(Call, Rall, Xall, K, sparseVmatrix, n_cameras, n_points, ca
         Ps = [P0]  # Initialize list of projection matrices with the first camera's projection matrix
         
         # Reconstruct the remaining camera poses from the optimization variable `x`
+        for i in range(n_cameras - 1):
+            C = x[7*i:7*i + 3].reshape(3, 1)  # Extract camera position
+            q = x[7*i + 3:7*i + 7]  # Extract quaternion
+            R = Rotation.from_quat(q).as_matrix()  # Convert quaternion to rotation matrix
+            P = np.matmul(np.matmul(K, R), np.concatenate((I, -C), axis=1))  # Construct projection matrix
+            Ps.append(P)
             
         # Collect the projection matrices based on the camera indices for each observation
         Pall = np.array([Ps[int(idx)] for idx in camera_indices])
@@ -72,6 +78,7 @@ def BundleAdjustment(Call, Rall, Xall, K, sparseVmatrix, n_cameras, n_points, ca
         x_proj = x_proj[:, :2]  # Extract [u, v] coordinates
         
         # Calculate the reprojection error as the difference between observed and projected points
+        reprojection_error = (xall - x_proj).ravel()
         
         return reprojection_error
     
@@ -79,26 +86,42 @@ def BundleAdjustment(Call, Rall, Xall, K, sparseVmatrix, n_cameras, n_points, ca
 
     # Initial parameters setup
     # Concatenate initial camera positions and orientations (as quaternions) into a single parameter vector `init_x`
+    init_x = []
     for idx, (Ci, Ri) in enumerate(zip(Call, Rall)):
                 
         # Convert rotation matrix to quaternion for initialization
-        # Quaternion representation of the rotation matrix (4,)
+        qi = Rotation.from_matrix(Ri).as_quat()  # Quaternion representation of the rotation matrix (4,)
         
         if idx == 0:
             # Initialize `init_x` with the first camera's parameters
+            continue  # Skip first camera since it's fixed
         else:
             # Append other cameras' parameters
+            init_x.extend(Ci.flatten())  # Add camera position
+            init_x.extend(qi)  # Add quaternion
     
     # Flatten the initial 3D points and add them to the parameter vector `init_x`
-    # Extract [X, Y, Z] coordinates from the 3D points
-    # Extract point IDs for future use
-    # Append flattened 3D points to `init_x`
+    X_init = Xall.iloc[:, 1:4].values  # Extract [X, Y, Z] coordinates from the 3D points
+    point_ids = Xall.iloc[:, 0].values  # Extract point IDs for future use
+    init_x.extend(X_init.flatten())  # Append flattened 3D points to `init_x`
     
     # Perform bundle adjustment using non-linear least squares optimization
+    result = least_squares(reprojection_loss, init_x, args=(n_cameras, n_points, camera_indices, point_indices, xall, K),
+                         jac_sparsity=sparseVmatrix, verbose=2, x_scale='jac', method='trf')
 
     # Extract optimized camera poses from the solution
+    CoptAll = [np.zeros((3, 1))]  # First camera remains at origin
+    RoptAll = [np.eye(3)]  # First camera remains unrotated
+    
+    for i in range(n_cameras - 1):
+        Copt = result.x[7*i:7*i + 3].reshape(3, 1)
+        qopt = result.x[7*i + 3:7*i + 7]
+        Ropt = Rotation.from_quat(qopt).as_matrix()
+        CoptAll.append(Copt)
+        RoptAll.append(Ropt)
         
     # Extract optimized 3D points and combine with IDs
-    
+    Xopt = result.x[7*(n_cameras-1):].reshape((-1, 3))
+    XoptAll = pd.DataFrame(np.column_stack((point_ids, Xopt)), columns=['ID', 'X', 'Y', 'Z'])
     
     return CoptAll, RoptAll, XoptAll  # Return optimized camera positions, rotation matrices, and 3D points

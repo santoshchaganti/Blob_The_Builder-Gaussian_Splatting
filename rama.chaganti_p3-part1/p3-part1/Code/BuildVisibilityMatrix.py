@@ -14,8 +14,13 @@ def GetVmatrix(All_Inlier):
     """
       
     # Extract each component from the array
+    u = All_Inlier.iloc[:, 1].values  # u coordinates
+    v = All_Inlier.iloc[:, 2].values  # v coordinates
+    point_ids = All_Inlier.iloc[:, 0].values  # Point IDs
+    camera_ids = All_Inlier.iloc[:, 3].values  # Camera IDs
 
     # Concatenate u, v, PointID, and CameraID into a single matrix
+    Vmatrix = np.column_stack((u, v, point_ids, camera_ids))
     
     return Vmatrix
 
@@ -36,17 +41,28 @@ def BuildVisibilityMatrix(n_cameras, n_points, camera_indices, point_indices):
     """
     
     # Calculate the number of observations (2D points), each observation contributes two rows (u and v)
+    n_observations = len(camera_indices)
+    m = 2 * n_observations  # Total rows in visibility matrix (2 per observation)
     
     # Calculate the number of parameters (unknowns) in the optimization
     # Each camera has 7 parameters (3 for translation, 4 for rotation as quaternion)
     # Each 3D point has 3 parameters (X, Y, Z)
+    n = 7 * n_cameras + 3 * n_points  # Total columns in visibility matrix
     
     # Initialize a sparse matrix in 'list of lists' (lil) format for efficient row operations
+    A = lil_matrix((m, n), dtype=int)
     
     # Create an array of observation indices
+    i = np.arange(n_observations)
     
     # Fill in the visibility matrix for camera parameters
+    for s in range(7):
+        A[2*i, camera_indices * 7 + s] = 1
+        A[2*i + 1, camera_indices * 7 + s] = 1
     
     # Fill in the visibility matrix for 3D point parameters
+    for s in range(3):
+        A[2*i, 7*n_cameras + point_indices * 3 + s] = 1
+        A[2*i + 1, 7*n_cameras + point_indices * 3 + s] = 1
 
     return A  # Return the sparse visibility matrix

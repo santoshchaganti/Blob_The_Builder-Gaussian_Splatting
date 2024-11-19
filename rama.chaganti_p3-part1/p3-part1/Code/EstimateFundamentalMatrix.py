@@ -3,7 +3,6 @@ from numpy import linalg as LA
 import math
 import sys
 
-
 def EstimateFundamentalMatrix(x1DF, x2DF):
     """
     Estimates the Fundamental matrix (F) between two sets of points using the 8-point algorithm,
@@ -24,15 +23,18 @@ def EstimateFundamentalMatrix(x1DF, x2DF):
     # Compute centroids of the points in each image
     x1_centroid = np.mean(x1DF, axis=0)
     x2_centroid = np.mean(x2DF, axis=0)
+    
     # Shift points to have zero mean (centering) by subtracting the centroid
     x1_centered = x1DF - x1_centroid
     x2_centered = x2DF - x2_centroid
     
     x1_dist = np.sqrt(np.sum(x1_centered**2, axis=1)).mean()
     x2_dist = np.sqrt(np.sum(x2_centered**2, axis=1)).mean()
+    
     # Compute scaling factors to make the mean distance of points from the origin equal to sqrt(2)
     s1 = np.sqrt(2) / x1_dist
     s2 = np.sqrt(2) / x2_dist
+    
     # Construct the normalization transformation matrices for both images
     T1 = np.array([
         [s1, 0, -s1*x1_centroid[0]],
@@ -58,6 +60,7 @@ def EstimateFundamentalMatrix(x1DF, x2DF):
     # Set up a linear system A*f = 0, where f is the vector form of the matrix F
     n = len(x1_norm)
     A = np.zeros((n, 9))
+    
     # Construct the first row of A using the epipolar constraint x2^T * F * x1 = 0
     # Repeat for all other points to build the full matrix A
     for i in range(n):
@@ -69,8 +72,10 @@ def EstimateFundamentalMatrix(x1DF, x2DF):
     # Find the solution to A*f = 0 by taking the SVD of A and using the right singular vector corresponding to the smallest singular value
     # Hint: u, s, vh = LA.svd(A)
     U, S, Vh = LA.svd(A, full_matrices=True)
+    
     # F is the last column of V (smallest singular value)
     F = Vh[-1, :]
+    
     # Reshape F into a 3x3 matrix
     F = F.reshape(3, 3)
 
@@ -78,8 +83,10 @@ def EstimateFundamentalMatrix(x1DF, x2DF):
     # The Fundamental matrix must be rank-2, so we set the smallest singular value of F to zero
     Ur, Sr, Vr = LA.svd(F, full_matrices=True)
     Sr = np.diag(Sr)
+    
     # Set the smallest singular value to zero
     Sr[2, 2] = 0
+    
     # Reconstruct F with rank-2 constraint
     F = Ur @ Sr @ Vr
 

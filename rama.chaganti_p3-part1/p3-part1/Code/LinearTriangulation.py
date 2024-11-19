@@ -44,17 +44,30 @@ def LinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set):
         
         # Construct matrix A for the linear triangulation system Ax=0
         # Each row in A is derived from the epipolar geometry constraint
-        
+        A = np.zeros((4, 4))
+        A[0] = u1 * P1[2] - P1[0]
+        A[1] = v1 * P1[2] - P1[1]
+        A[2] = u2 * P2[2] - P2[0]
+        A[3] = v2 * P2[2] - P2[1]
         
         # Solve Ax=0 using the eigenvector associated with the smallest eigenvalue of A^T A
         # Compute A^T * A
+        ATA = np.matmul(A.T, A)
+        
         # Eigen decomposition of A^T * A
+        eigenvals, eigenvecs = LA.eig(ATA)
+        
         # Find the smallest eigenvalue
+        min_eigenval_idx = np.argmin(eigenvals)
+        
         # Corresponding eigenvector gives the solution
+        X = eigenvecs[:, min_eigenval_idx]
+        
         # Normalize to make the point homogeneous
+        X = X / X[3]
         
         # Append the triangulated 3D point with its ID to the list
-        
+        Xset.append([ID, X[0], X[1], X[2]])
 
     # Convert the list of points to a numpy array for easy manipulation
     Xset = np.array(Xset)
