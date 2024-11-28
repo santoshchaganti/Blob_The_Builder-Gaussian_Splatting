@@ -17,15 +17,15 @@ from PIL import Image
 from utils import *
 from EstimateFundamentalMatrix import EstimateFundamentalMatrix
 from GetInliersRANSAC import GetInliersRANSAC
-# from EssentialMatrixFromFundamentalMatrix import EssentialMatrixFromFundamentalMatrix
-# from ExtractCameraPose import ExtractCameraPose
-# from LinearTriangulation import LinearTriangulation
-# from DisambiguateCameraPose import DisambiguateCameraPose
-# from PnPRANSAC import *
-# from NonlinearTriangulation import NonlinearTriangulation
-# from NonlinearPnP import NonlinearPnP
-# from BuildVisibilityMatrix import *
-# from BundleAdjustment import BundleAdjustment
+from EssentialMatrixFromFundamentalMatrix import EssentialMatrixFromFundamentalMatrix
+from ExtractCameraPose import ExtractCameraPose
+from LinearTriangulation import LinearTriangulation
+from DisambiguateCameraPose import DisambiguateCameraPose
+from PnPRANSAC import *
+from NonlinearTriangulation import NonlinearTriangulation
+from NonlinearPnP import NonlinearPnP
+from BuildVisibilityMatrix import *
+from BundleAdjustment import BundleAdjustment
 
 ################################################################################
 # Step 1: Parse all matching files and assign IDs to feature points.
@@ -103,9 +103,10 @@ target_all_points = target_keypoints[[5, 6]].to_numpy()
 # Write a function GetInliersRANSAC that removes outliers and compute Fundamental Matrix
 # using initial feature correspondences
 
-source_inliers, target_inliers, fundamental_matrix = GetInliersRANSAC(source_keypoints, target_keypoints)
+source_inliers, target_inliers, F = GetInliersRANSAC(source_keypoints, target_keypoints)
 source_inlier_points = source_inliers.to_numpy()
-source_inlier_points = target_inliers.to_numpy()
+target_inlier_points = target_inliers.to_numpy()
+print(F)
 
 
 # #################################################################################
@@ -117,7 +118,7 @@ source_inlier_points = target_inliers.to_numpy()
 # # Write a code to print the final feature matches and compare them with the original ones.
 
 output_path = '../Output/'
-DrawMatches('../Data/Imgs/', source_camera_index, target_camera_index, source_all_points, target_all_points, source_inlier_points, source_inlier_points, output_path)
+DrawMatches('../Data/Imgs/', source_camera_index, target_camera_index, source_all_points, target_all_points, source_inlier_points, target_inlier_points, output_path)
 
 # ################################################################################
 # # Step 4: Load intrinsic camera matrix K, which contains focal lengths and 
@@ -126,87 +127,88 @@ DrawMatches('../Data/Imgs/', source_camera_index, target_camera_index, source_al
 # # the Essential matrix.
 # ################################################################################
 
-# calib_file = '../Data/calibration.txt'
-# K = process_calib_matrix(calib_file)
-# print(bcolors.OKCYAN + "\nIntrinsic camera matrix K:" + bcolors.OKCYAN)
-# print(K, '\n')
+calib_file = '../Data/Imgs/calibration.txt'
+K = process_calib_matrix(calib_file)
+print(bcolors.OKCYAN + "\nIntrinsic camera matrix K:" + bcolors.OKCYAN)
+print(K, '\n')
 
 
 # ################################################################################
 # # Step 5: Compute Essential Matrix from Fundamental Matrix
 # ################################################################################
-# E = EssentialMatrixFromFundamentalMatrix(F, K)
+E = EssentialMatrixFromFundamentalMatrix(F, K)
 
 # ################################################################################
 # # Step 6: Extract Camera Poses from Essential Matrix
 # # Note: You will obtain a set of 4 translation and rotation from this function
 # ################################################################################
-# Cset, Rset = ExtractCameraPose(E)
+Cset, Rset = ExtractCameraPose(E)
 
 # ################################################################################
 # # Step 6: Linear Triangulation
 # ################################################################################
 # # Initialize an empty list to store the 3D points calculated for each camera pose
-# Xset = []
-# # Iterate over each camera pose in Cset and Rset
-# for i in range(4):
-#     # Perform linear triangulation to estimate the 3D points given:
-#     # - K: Intrinsic camera matrix
-#     # - np.zeros((3,1)): The initial camera center (assumes origin for the first camera)
-#     # - np.eye(3): The initial camera rotation (identity matrix, assuming no rotation for the first camera)
-#     # - Cset[i]: Camera center for the i-th pose
-#     # - Rset[i]: Rotation matrix for the i-th pose
-#     # - x1Inlier: Inlier points in the source image
-#     # - x2Inlier: Corresponding inlier points in the target image
-#     Xset_i = LinearTriangulation(K, np.zeros((3,1)), np.eye(3), Cset[i], Rset[i], x1Inlier, x2Inlier)
-#     Xset.append(Xset_i)
+Xset = []
+# Iterate over each camera pose in Cset and Rset
+for i in range(4):
+    # Perform linear triangulation to estimate the 3D points given:
+    # - K: Intrinsic camera matrix
+    # - np.zeros((3,1)): The initial camera center (assumes origin for the first camera)
+    # - np.eye(3): The initial camera rotation (identity matrix, assuming no rotation for the first camera)
+    # - Cset[i]: Camera center for the i-th pose
+    # - Rset[i]: Rotation matrix for the i-th pose
+    # - x1Inlier: Inlier points in the source image
+    # - x2Inlier: Corresponding inlier points in the target image
+    Xset_i = LinearTriangulation(K, np.zeros((3,1)), np.eye(3), Cset[i], Rset[i], source_inliers, target_inliers)
+    Xset.append(Xset_i)
 
 # ################################################################################
 # ## Step 7: Plot all points and camera poses
 # # Write a function: PlotPtsCams that visualizes the 3D points and the estimated camera poses.
 # ################################################################################
 
-# # Arguments:
-# # - Cset: List of camera centers for each pose.
-# # - Rset: List of rotation matrices for each pose.
-# # - Xset: List of triangulated 3D points corresponding to each camera pose.
-# # - SAVE_DIR: Output directory to save the plot.
-# # - FourCameraPose.png: Filename for the output plot showing 3D points and camera poses.
-# PlotCameraPts(Cset, Rset, Xset, SAVE_DIR, FourCameraPose.png)
+# Arguments:
+# - Cset: List of camera centers for each pose.
+# - Rset: List of rotation matrices for each pose.
+# - Xset: List of triangulated 3D points corresponding to each camera pose.
+# - SAVE_DIR: Output directory to save the plot.
+# - FourCameraPose.png: Filename for the output plot showing 3D points and camera poses.
+
+PlotCameraPts(Cset, Rset, Xset, output_path, "FourCameraPose.png")
 
 
 
 
-# ################################################################################
-# ## Step 8: Disambiguate Camera Pose
-# # Write a function: DisambiguateCameraPose
-# # DisambiguateCameraPose is called to identify the correct camera pose from multiple
-# # hypothesized poses. It selects the pose with the most inliers in front of both 
-# # cameras (i.e., the pose with the most consistent triangulated 3D points).
-# ################################################################################
+################################################################################
+## Step 8: Disambiguate Camera Pose
+# Write a function: DisambiguateCameraPose
+# DisambiguateCameraPose is called to identify the correct camera pose from multiple
+# hypothesized poses. It selects the pose with the most inliers in front of both 
+# cameras (i.e., the pose with the most consistent triangulated 3D points).
+################################################################################
 
-# ## Disambiguate camera poses
-# # Arguments:
-# # - Cset: List of candidate camera centers for each pose.
-# # - Rset: List of candidate rotation matrices for each pose.
-# # - Xset: List of sets of triangulated 3D points for each camera pose.
-# # Returns:
-# # - C: The selected camera center after disambiguation.
-# # - R: The selected rotation matrix after disambiguation.
-# # - X: The triangulated 3D points for the selected camera pose.
-# # - selectedIdx: The index of the selected camera pose within the original candidate sets.
-# C, R, X, selectedIdx = DisambiguateCameraPose(Cset, Rset, Xset)
+## Disambiguate camera poses
+# Arguments:
+# - Cset: List of candidate camera centers for each pose.
+# - Rset: List of candidate rotation matrices for each pose.
+# - Xset: List of sets of triangulated 3D points for each camera pose.
+# Returns:
+# - C: The selected camera center after disambiguation.
+# - R: The selected rotation matrix after disambiguation.
+# - X: The triangulated 3D points for the selected camera pose.
+# - selectedIdx: The index of the selected camera pose within the original candidate sets.
+C, R, X, selectedIdx = DisambiguateCameraPose(Cset, Rset, Xset)
 
-# # Plot the selected camera pose with its 3D points
-# # This plot shows the selected camera center, orientation, and the corresponding 3D points.
-# # Arguments:
-# # - [C]: List containing the selected camera center (wrapping it in a list for compatibility with PlotPtsCams).
-# # - [R]: List containing the selected rotation matrix.
-# # - [X]: List containing the 3D points for the selected camera pose.
-# # - SAVE_DIR: Output directory to save the plot.
-# # - OneCameraPoseWithPoints.png: Filename for the output plot showing both the camera pose and 3D points.
-# # - show_pos=True: Enables the display of the camera pose.
-# PlotPtsCams([C], [R], [X], SAVE_DIR, OneCameraPoseWithPoints.png)
+# Plot the selected camera pose with its 3D points
+# This plot shows the selected camera center, orientation, and the corresponding 3D points.
+# Arguments:
+# - [C]: List containing the selected camera center (wrapping it in a list for compatibility with PlotPtsCams).
+# - [R]: List containing the selected rotation matrix.
+# - [X]: List containing the 3D points for the selected camera pose.
+# - SAVE_DIR: Output directory to save the plot.
+# - OneCameraPoseWithPoints.png: Filename for the output plot showing both the camera pose and 3D points.
+# - show_pos=True: Enables the display of the camera pose.
+PlotPtsCams([C], [R], [X], output_path, "OneCameraPoseWithPoints.png")
 
 # ################################################################################
 # ## Step 9: Non-Linear Triangulation

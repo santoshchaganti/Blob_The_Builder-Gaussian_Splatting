@@ -4,7 +4,7 @@ import random
 from tqdm import tqdm
 from EstimateFundamentalMatrix import EstimateFundamentalMatrix
 
-def GetInliersRANSAC(x1All, x2All, M=5000, T=0.001):
+def GetInliersRANSAC(x1All, x2All, M=1500, T=0.05):
     """
     Estimates the Fundamental matrix using RANSAC and identifies inlier matches
     between two sets of points, rejecting outliers.
@@ -65,5 +65,6 @@ def GetInliersRANSAC(x1All, x2All, M=5000, T=0.001):
     # Convert inliers back to DataFrames
     x1Inlier = pd.DataFrame(x1Inlier, columns=['x', 'y'])
     x2Inlier = pd.DataFrame(x2Inlier, columns=['x', 'y'])
+    
 
     return x1Inlier, x2Inlier, FBest

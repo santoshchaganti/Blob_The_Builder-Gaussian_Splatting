@@ -17,7 +17,8 @@ def CheckDet(R, C):
     # If the determinant of R is -1, invert both R and C
     if LA.det(R) < 0:
         R = -R
-        C = -C
+        C=-C
+       
 
     return R, C
 

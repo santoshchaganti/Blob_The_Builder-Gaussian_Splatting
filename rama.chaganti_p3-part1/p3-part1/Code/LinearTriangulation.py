@@ -20,9 +20,10 @@ def LinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set):
     Returns:
     - Xset: Array of 3D points in homogeneous coordinates along with their IDs (Nx4).
     """
-        
+    
     Xset = []  # List to store the triangulated 3D points
     
+ 
     # Convert DataFrames to numpy arrays for easier manipulation
     x1set = x1set.to_numpy()
     x2set = x2set.to_numpy()
@@ -34,13 +35,14 @@ def LinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set):
     P2 = np.matmul(np.matmul(K, Rseti), np.concatenate((I, (-1) * Cseti), axis=1))  # Projection matrix for the second camera
     
     # Iterate over each pair of corresponding points (x1 in first view and x2 in second view)
-    for x1, x2 in zip(x1set, x2set):
-        ID = x1[0]  # Unique ID for the point
-        u1 = x1[1]  # x-coordinate in the first image
-        v1 = x1[2]  # y-coordinate in the first image
+    for i,(x1, x2) in enumerate(zip(x1set, x2set)):
+       
+        ID = i  # Unique ID for the point
+        u1 = x1[0]  # x-coordinate in the first image
+        v1 = x1[1]  # y-coordinate in the first image
         
-        u2 = x2[1]  # x-coordinate in the second image
-        v2 = x2[2]  # y-coordinate in the second image
+        u2 = x2[0]  # x-coordinate in the second image
+        v2 = x2[1]  # y-coordinate in the second image
         
         # Construct matrix A for the linear triangulation system Ax=0
         # Each row in A is derived from the epipolar geometry constraint
@@ -51,21 +53,9 @@ def LinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set):
         A[3] = v2 * P2[2] - P2[1]
         
         # Solve Ax=0 using the eigenvector associated with the smallest eigenvalue of A^T A
-        # Compute A^T * A
-        ATA = np.matmul(A.T, A)
-        
-        # Eigen decomposition of A^T * A
-        eigenvals, eigenvecs = LA.eig(ATA)
-        
-        # Find the smallest eigenvalue
-        min_eigenval_idx = np.argmin(eigenvals)
-        
-        # Corresponding eigenvector gives the solution
-        X = eigenvecs[:, min_eigenval_idx]
-        
-        # Normalize to make the point homogeneous
-        X = X / X[3]
-        
+        _, _, Vt = LA.svd(A)
+        X = Vt[-1]
+        X=X / X[-1]
         # Append the triangulated 3D point with its ID to the list
         Xset.append([ID, X[0], X[1], X[2]])
 

@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 import cv2
 import os
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from pathlib import Path
 
 # Define Colors For Terminal Print
@@ -216,3 +219,121 @@ def ParseKeypoints(file, sourceIdx, targetIdx):
     pairDF = pd.DataFrame(pairList)
 
     return pairDF
+
+def plot_camera(ax, C, R, scale=1.0, color='r'):
+    """
+    Plots a 3D camera object as a pyramid (frustum approximation).
+    
+    Args:
+        ax: Matplotlib 3D axis.
+        C: Camera center (3D point).
+        R: Rotation matrix (3x3).
+        scale: Scaling factor for the camera size.
+        color: Color of the camera object.
+    """
+    # Define the base of the pyramid (camera frustum) in the camera's local frame
+    base = np.array([
+        [-1, -1, 2],  # Bottom-left
+        [1, -1, 2],   # Bottom-right
+        [1, 1, 2],    # Top-right
+        [-1, 1, 2]    # Top-left
+    ]) * scale
+
+    apex = np.array([0, 0, 0])  # Apex of the pyramid (camera center in local frame)
+    # print(C)
+    # Transform the base and apex to the world frame
+    base_world = (R @ base.T).T + C
+    apex_world = C
+
+    # Create the faces of the pyramid (triangles)
+    faces = [
+        [apex_world, base_world[0], base_world[1]],  # Front face
+        [apex_world, base_world[1], base_world[2]],  # Right face
+        [apex_world, base_world[2], base_world[3]],  # Back face
+        [apex_world, base_world[3], base_world[0]],  # Left face
+        base_world  # Bottom face (quadrilateral)
+    ]
+
+    # Plot the pyramid
+    ax.add_collection3d(Poly3DCollection(faces, color=color, alpha=0.5))
+
+def PlotCameraPts(Cset, Rset, Xset, save_dir, filename):
+    """
+    Plots all 3D points and camera objects in the X-Z plane with fixed axis limits.
+    
+    Args:
+        Cset: List of camera centers.
+        Rset: List of rotation matrices.
+        Xset: List of 3D points (one set for each camera pose).
+        save_dir: Directory to save the plot.
+        filename: Name of the output plot file.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    colors = ['red', 'g', 'blue', 'black']  # Different colors for each pose
+
+    for i in range(len(Cset)):
+        # Plot 3D points for the current camera pose
+        X = np.array(Xset[i])[:, 1:4]
+        ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=colors[i], marker='o',s=1, label=f'3D Points (Pose {i+1})')
+
+        # Plot the camera object
+        plot_camera(ax, Cset[i].flatten(), Rset[i], scale=1,color=colors[i])
+
+    # Set fixed viewing angle to the X-Z plane
+    ax.view_init(elev=0, azim=90)
+
+    # Set axis limits
+    ax.set_xlim([-10, 10])
+    ax.set_ylim([-10, 10])
+    ax.set_zlim([-15, 15])
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title('3D Points and Camera Objects (X-Z Plane)')
+    ax.legend()
+
+    # Save and display the plot
+    plt.savefig(f"{save_dir}/{filename}")
+    plt.show()
+
+def PlotPtsCams(Cset, Rset, Xset, save_dir, filename, show_pos=True):
+    """
+    Plots the selected 3D points and the camera pose.
+    
+    Args:
+        Cset: List of camera centers (1 camera pose selected).
+        Rset: List of rotation matrices (1 rotation matrix selected).
+        Xset: List of triangulated 3D points.
+        save_dir: Output directory for saving the plot.
+        filename: Filename for the saved plot.
+        show_pos: Whether to display the camera position or not.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    X=np.squeeze(np.array(Xset))[:,1:4]
+    ax.scatter(X[:, 0], X[:, 1], X[:, 2], c='blue', marker='o',s=1, label='3D Points')
+
+        # Plot the camera object
+    plot_camera(ax, Cset[0].flatten(), Rset[0], scale=1,color='blue')
+
+    # Set fixed viewing angle to the X-Z plane
+    ax.view_init(elev=0, azim=90)
+
+    # Set axis limits
+    ax.set_xlim([-10, 10])
+    ax.set_ylim([-10, 10])
+    ax.set_zlim([-15, 15])
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title('3D Points and Camera Objects (X-Z Plane)')
+    ax.legend()
+
+    # Save and display the plot
+    plt.savefig(f"{save_dir}/{filename}")
+    plt.show()

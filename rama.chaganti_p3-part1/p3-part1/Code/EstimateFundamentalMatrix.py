@@ -26,8 +26,8 @@ def EstimateFundamentalMatrix(x1DF, x2DF):
         mean_dist = np.mean(np.sqrt(np.sum(centered_points**2, axis=1)))
         scale = np.sqrt(2) / mean_dist
         T = np.array([
-            [scale, 0, -scale * centroid[0]],
-            [0, scale, -scale * centroid[1]],
+            [scale, 0,  -scale*centroid[0]],
+            [0, scale,  -scale*centroid[1]],
             [0, 0, 1]
         ])
         normalized_points = np.dot(T, np.vstack((points.T, np.ones((1, points.shape[0])))))

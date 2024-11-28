@@ -37,10 +37,11 @@ def DisambiguateCameraPose(Cset, Rset, Xset):
             # Convert 3D point to a column vector [X, Y, Z]
             X = Xi[1:].reshape(3,1)
             
+            
             # Check if the point is in front of both the candidate and reference cameras
             # The depth check is performed in the camera coordinate system
-            depth1 = r3 @ (X - Cseti)
-            depth2 = r30 @ (X - Cset0)
+            depth1 = r3 @ X - Cseti[2]
+            depth2 = r30 @ X - Cset0[2]
             
             # If true: Increment count if the point has positive depth in both systems
             if depth1 > 0 and depth2 > 0:
