@@ -1,25 +1,25 @@
 from numpy import linalg as LA
 import numpy as np
 
-# Function to ensure the rotation matrix R has a positive determinant
-def CheckDet(R, C):
-    """
-    CheckDet: Adjusts the rotation matrix R and translation vector C if the determinant of R is negative.
-    This is done to ensure that R represents a valid rotation matrix with a determinant of +1.
+# # Function to ensure the rotation matrix R has a positive determinant
+# def CheckDet(R, C):
+#     """
+#     CheckDet: Adjusts the rotation matrix R and translation vector C if the determinant of R is negative.
+#     This is done to ensure that R represents a valid rotation matrix with a determinant of +1.
     
-    Parameters:
-    - R: Rotation matrix (3x3).
-    - C: Translation vector (3x1).
+#     Parameters:
+#     - R: Rotation matrix (3x3).
+#     - C: Translation vector (3x1).
     
-    Returns:
-    - Adjusted R and C such that det(R) >= 0.
-    """
-    # If the determinant of R is -1, invert both R and C
-    if LA.det(R) < 0:
-        R = -R
-        C = -C
+#     Returns:
+#     - Adjusted R and C such that det(R) >= 0.
+#     """
+#     # If the determinant of R is -1, invert both R and C
+#     if LA.det(R) < 0:
+#         R = -R
+#         C = -C
 
-    return R, C
+#     return R, C
 
 # Function to extract possible camera poses from the Essential Matrix
 def ExtractCameraPose(E):
@@ -42,30 +42,23 @@ def ExtractCameraPose(E):
     W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
 
     # Compute the four possible camera poses (two rotations and two translations)
-    R1 = U @ W @ Vh
-    R2 = U @ W @ Vh
-    R3 = U @ W.T @ Vh
-    R4 = U @ W.T @ Vh
+    R1 = np.dot(U, np.dot(W, Vh))
+    R2 = np.dot(U, np.dot(W, Vh))
+    R3 = np.dot(U, np.dot(W.T, Vh))
+    R4 = np.dot(U, np.dot(W.T, Vh))
     
     C1 = U[:, 2]
     C2 = -U[:, 2]
     C3 = U[:, 2]
     C4 = -U[:, 2]
     
-    # Ensure each rotation matrix has a positive determinant (R should be a valid rotation matrix)
-    R1, C1 = CheckDet(R1, C1)
-    R2, C2 = CheckDet(R2, C2)
-    R3, C3 = CheckDet(R3, C3)
-    R4, C4 = CheckDet(R4, C4)
-    
-    # Expand dimensions of translation vectors for easy concatenation later (make them 3x1)
-    C1 = C1.reshape(3, 1)
-    C2 = C2.reshape(3, 1)
-    C3 = C3.reshape(3, 1)
-    C4 = C4.reshape(3, 1)
-    
     # Collect the four possible camera poses (rotations and translations)
     Cset = [C1, C2, C3, C4]  # List of possible translation vectors
     Rset = [R1, R2, R3, R4]  # List of possible rotation matrices
+    
+    for i in range(len(Rset)):
+        if (np.linalg.det(Rset[i]) < 0):
+            Rset[i] = -Rset[i]
+            Cset[i] = -Cset[i]
 
     return Cset, Rset  # Return sets of possible translations and rotations

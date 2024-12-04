@@ -19,7 +19,7 @@ def EssentialMatrixFromFundamentalMatrix(F, K):
     K_T = K.T
 
     # Compute the initial Essential matrix E using E = K^T * F * K
-    E = K_T @ F @ K
+    E = np.dot(K_T, np.dot(F, K))
 
     # Apply Singular Value Decomposition (SVD) to E to enforce constraints for a valid Essential matrix
     U, S, Vh = LA.svd(E, full_matrices=True)
@@ -32,6 +32,6 @@ def EssentialMatrixFromFundamentalMatrix(F, K):
     S[2, 2] = 0
     
     # Reconstruct the corrected Essential matrix by applying the modified singular values
-    new_E = U @ S @ Vh
+    new_E = np.dot(U, np.dot(S, Vh))
     
     return new_E  # Return the corrected Essential matrix

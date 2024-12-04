@@ -1,6 +1,5 @@
 import numpy as np
 
-# Function to disambiguate the correct camera pose from multiple candidates
 def DisambiguateCameraPose(Cset, Rset, Xset):
     """
     DisambiguateCameraPose: Determines the correct camera pose (position and orientation)
@@ -17,44 +16,41 @@ def DisambiguateCameraPose(Cset, Rset, Xset):
     - X: The set of 3D points corresponding to the correct camera pose.
     - max_index: Index of the correct camera pose in the input lists.
     """
-    
-    # Reference pose (assuming first camera is at origin with identity rotation)
+    # Reference pose: first camera at origin with identity rotation
     Rset0 = np.eye(3)
     Cset0 = np.zeros((3, 1))
-    countList = []  # List to store the count of points with positive depth for each candidate pose
+    count_list = []  # List to store the count of points with positive depth for each candidate pose
 
     # Iterate over each candidate pose
-    for Cseti, Rseti, Xseti in zip(Cset, Rset, Xset):       
-        # Extract the third row of the rotation matrix (Z-axis direction)
-        r3 = Rseti[2]
-        r30 = Rset0[2]
-        
+    for i, (Cseti, Rseti, Xseti) in enumerate(zip(Cset, Rset, Xset)):
         count = 0  # Initialize count of points with positive depth
-
-        # For each 3D point in the current candidate pose
+        
         for Xi in Xseti:
-            # Transpose the 3D point to align with calculation
-            # Convert 3D point to a column vector [X, Y, Z]
-            X = Xi[1:].reshape(3,1)
-            
-            # Check if the point is in front of both the candidate and reference cameras
-            # The depth check is performed in the camera coordinate system
-            depth1 = r3 @ (X - Cseti)
-            depth2 = r30 @ (X - Cset0)
-            
-            # If true: Increment count if the point has positive depth in both systems
-            if depth1 > 0 and depth2 > 0:
-                count += 1
-                
-        # Store the count of positive depth points for the current pose
-        countList.append(count)
-    
-    # Find the candidate pose with the maximum count of points with positive depth
-    max_index = np.argmax(countList)
+            # Extract 3D point in world coordinates
+            X_world = Xi[1:4]  # Skip ID, consider [X, Y, Z] coordinates
+            X_world_homo = np.hstack((X_world, [1]))  # Convert to homogeneous
 
-    # Select the pose with the highest positive depth count as the correct pose
+            # Compute the depth in the candidate camera's coordinate system
+            X_cam_candidate = Rseti @ (X_world_homo[:3] - Cseti.flatten())
+            depth_candidate = X_cam_candidate[2]  # Z-coordinate
+
+            # Compute the depth in the reference camera's coordinate system
+            X_cam_ref = Rset0 @ (X_world_homo[:3] - Cset0.flatten())
+            depth_ref = X_cam_ref[2]  # Z-coordinate
+
+            # Check positive depth for both cameras
+            if depth_candidate > 0 and depth_ref > 0:
+                count += 1
+
+        # Store count of positive depth points for this pose
+        count_list.append(count)
+
+    # Find the index of the pose with the maximum count of points with positive depth
+    max_index = np.argmax(count_list)
+
+    # Select the correct pose based on the index
     C = Cset[max_index]
-    R = Rset[max_index] 
+    R = Rset[max_index]
     X = Xset[max_index]
 
     return C, R, X, max_index

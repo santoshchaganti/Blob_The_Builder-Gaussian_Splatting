@@ -3,6 +3,10 @@ import numpy as np
 import cv2
 import os
 from pathlib import Path
+from scipy.spatial.transform import Rotation 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 # Define Colors For Terminal Print
 class bcolors:
@@ -216,3 +220,91 @@ def ParseKeypoints(file, sourceIdx, targetIdx):
     pairDF = pd.DataFrame(pairList)
 
     return pairDF
+
+
+def PlotCameraPts(Cset, Rset, Xset, save_dir, filename="all_poses.png"):
+    """
+    Visualizes camera poses and 3D points in a 2D plot (XZ plane) using provided markers.
+    
+    Args:
+        Cset (list): List of camera centers (translation vectors).
+        Rset (list): List of rotation matrices for each pose.
+        Xset (list): List of triangulated 3D points.
+        save_dir (str): Directory to save the plot.
+        filename (str): Filename for the saved plot.
+    """
+    colormap = ['r', 'b', 'g', 'y']  # Colors for different camera poses
+    fig, ax = plt.subplots()
+
+    # Iterate over each camera pose
+    for i in range(len(Rset)):
+        C = Cset[i].flatten()  # Ensure it's a 1D array
+        R = Rset[i]
+        X = np.array(Xset[i])[:, 1:4]  # Extract 3D points (excluding IDs)
+        
+        # Convert rotation matrix to rotation vector and angle in degrees
+        rotation_vec = Rotation.from_matrix(R).as_rotvec()
+        rotation_deg = np.rad2deg(rotation_vec)
+        
+        # Custom marker for camera orientation
+        t = mpl.markers.MarkerStyle(marker=mpl.markers.CARETDOWN)
+        t._transform = t.get_transform().rotate_deg(int(rotation_deg[1]))  # Rotate marker
+        
+        # Plot camera center and orientation
+        ax.scatter(C[0], C[2], marker=t, s=250, color=colormap[i])
+        
+        # Plot 3D points associated with this camera pose
+        ax.scatter(X[:, 0], X[:, 2], s=4, color=colormap[i], alpha=0.6, label=f"Cam {i}")
+    
+    # Set plot limits and labels
+    ax.set_xlim(-20, 20)
+    ax.set_ylim(-20, 30)
+    ax.set_xlabel("X")
+    ax.set_ylabel("Z")
+    ax.legend()
+    
+    # Save the plot
+    save_path = f"{save_dir}/{filename}"
+    plt.savefig(save_path)
+    plt.close(fig)  # Close the figure to avoid overlap in repeated calls
+    print(f"Plot saved at {save_path}")
+    
+def PlotPtsCams(C_list, R_list, X_list, save_dir, filename="OneCameraPoseWithPoints_2D.png"):
+    """
+    Plots the selected camera pose and its associated 3D points on a 2D XZ plane.
+    
+    Args:
+        C_list (list): List containing the selected camera center (3x1 array).
+        R_list (list): List containing the selected rotation matrix (3x3 array).
+        X_list (list): List containing the 3D points (Nx4 array, with [ID, X, Y, Z]).
+        save_dir (str): Directory to save the output plot.
+        filename (str): Name of the output plot file.
+    """
+    colormap = ['r', 'b', 'g', 'y']  # Pre-defined colors for each plot
+    plt.figure()
+
+    # Iterate over cameras and 3D points
+    for i, (C, R, X) in enumerate(zip(C_list, R_list, X_list)):
+        # Camera center
+        C = C.flatten()  # Flatten the camera center to a 1D array
+        X_points = np.array(X)[:, 1:4]  # Extract [X, Z] from 3D points (ignore IDs and Y)
+
+        # Plot 3D points in XZ plane
+        plt.scatter(X_points[:, 0], X_points[:, 2], s=4, color=colormap[i % len(colormap)], alpha=0.6, label=f"Cam {i}")
+        
+        # Camera orientation
+        rotation_vec = Rotation.from_matrix(R).as_rotvec()
+        rotation_deg = np.rad2deg(rotation_vec)
+        t = mpl.markers.MarkerStyle(marker=mpl.markers.CARETDOWN)
+        t._transform = t.get_transform().rotate_deg(int(rotation_deg[1]))
+        plt.scatter(C[0], C[2], marker=t, s=250, color=colormap[i % len(colormap)])
+
+    # Set axis labels, legend, and save
+    plt.xlabel("X")
+    plt.ylabel("Z")
+    plt.title("Selected Camera Pose and 3D Points (XZ Plane)")
+    plt.legend()
+    save_path = f"{save_dir}/{filename}"
+    plt.savefig(save_path)
+    plt.close()
+    print(f"2D plot saved at {save_path}")

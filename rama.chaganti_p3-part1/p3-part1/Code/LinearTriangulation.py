@@ -21,55 +21,53 @@ def LinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set):
     - Xset: Array of 3D points in homogeneous coordinates along with their IDs (Nx4).
     """
         
-    Xset = []  # List to store the triangulated 3D points
+    Xset = []
     
-    # Convert DataFrames to numpy arrays for easier manipulation
+    # Convert DataFrames to numpy arrays
     x1set = x1set.to_numpy()
     x2set = x2set.to_numpy()
-
     
-    # Calculate the projection matrices P1 and P2 with the form P = KR[I|-C]
-    I = np.eye(3)  # Identity matrix (3x3)
-    P1 = np.matmul(np.matmul(K, R0), np.concatenate((I, -C0), axis=1))  # Projection matrix for the first camera
-    P2 = np.matmul(np.matmul(K, Rseti), np.concatenate((I, (-1) * Cseti), axis=1))  # Projection matrix for the second camera
+    # Reshape camera centers
+    C0 = C0.reshape(3, 1)
+    Cseti = Cseti.reshape(3, 1)
     
-    # Iterate over each pair of corresponding points (x1 in first view and x2 in second view)
+    # Calculate projection matrices
+    I = np.eye(3)
+    P1 = np.matmul(K, np.matmul(R0, np.hstack((I, -C0))))
+    P2 = np.matmul(K, np.matmul(Rseti, np.hstack((I, -Cseti))))
+    
+    # Get individual rows of projection matrices
+    p1, p2, p3 = P1
+    p1_cap, p2_cap, p3_cap = P2
+    
+    # Process each pair of corresponding points
     for x1, x2 in zip(x1set, x2set):
-        ID = x1[0]  # Unique ID for the point
-        u1 = x1[1]  # x-coordinate in the first image
-        v1 = x1[2]  # y-coordinate in the first image
+        ID = x1[0]  # Get point ID
         
-        u2 = x2[1]  # x-coordinate in the second image
-        v2 = x2[2]  # y-coordinate in the second image
+        # Extract coordinates
+        x = x1[0]   # u1
+        y = x1[1]   # v1
+        x_cap = x2[0]   # u2
+        y_cap = x2[1]   # v2
         
-        # Construct matrix A for the linear triangulation system Ax=0
-        # Each row in A is derived from the epipolar geometry constraint
-        A = np.zeros((4, 4))
-        A[0] = u1 * P1[2] - P1[0]
-        A[1] = v1 * P1[2] - P1[1]
-        A[2] = u2 * P2[2] - P2[0]
-        A[3] = v2 * P2[2] - P2[1]
+        # Construct constraints matrix A
+        A = []
+        A.append((y * p3) - p2)
+        A.append((x * p3) - p1)
+        A.append((y_cap * p3_cap) - p2_cap)
+        A.append((x_cap * p3_cap) - p1_cap)
         
-        # Solve Ax=0 using the eigenvector associated with the smallest eigenvalue of A^T A
-        # Compute A^T * A
-        ATA = np.matmul(A.T, A)
+        A = np.array(A).reshape(4, 4)
         
-        # Eigen decomposition of A^T * A
-        eigenvals, eigenvecs = LA.eig(ATA)
+        # Solve using SVD
+        _, _, v = np.linalg.svd(A)
+        X = v[-1, :]
+        X = X / X[-1]  # Normalize homogeneous coordinates
         
-        # Find the smallest eigenvalue
-        min_eigenval_idx = np.argmin(eigenvals)
-        
-        # Corresponding eigenvector gives the solution
-        X = eigenvecs[:, min_eigenval_idx]
-        
-        # Normalize to make the point homogeneous
-        X = X / X[3]
-        
-        # Append the triangulated 3D point with its ID to the list
+        # Append point ID and 3D coordinates
         Xset.append([ID, X[0], X[1], X[2]])
-
-    # Convert the list of points to a numpy array for easy manipulation
+    
+    # Convert to numpy array
     Xset = np.array(Xset)
-
-    return Xset  # Return the set of triangulated 3D points with their IDs
+    
+    return Xset
