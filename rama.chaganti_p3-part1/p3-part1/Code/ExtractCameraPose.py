@@ -17,9 +17,6 @@ def CheckDet(R, C):
     # If the determinant of R is -1, invert both R and C
     if LA.det(R) < 0:
         R = -R
-        C=-C
-       
-
     return R, C
 
 # Function to extract possible camera poses from the Essential Matrix

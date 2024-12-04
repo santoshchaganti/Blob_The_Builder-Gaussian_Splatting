@@ -210,19 +210,19 @@ C, R, X, selectedIdx = DisambiguateCameraPose(Cset, Rset, Xset)
 # - show_pos=True: Enables the display of the camera pose.
 PlotPtsCams([C], [R], [X], output_path, "OneCameraPoseWithPoints.png")
 
-# ################################################################################
-# ## Step 9: Non-Linear Triangulation
-# # Write a function: NonLinearTriangulation
-# # Inputs:
-# # - K: Intrinsic camera matrix of the first camera (3x3).
-# # - C0, R0: Translation (3x1) and rotation (3x3) of the first camera.
-# # - Cseti, Rseti: Translations and rotations of other cameras in a list.
-# # - x1set, x2set: Sets of 2D points in each image for triangulation.
-# # - X0: Initial 3D points for optimization.
-# # Output:
-# # - Returns optimized 3D points after minimizing reprojection error.
-# # NonlinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set, X0):
-# ################################################################################
+################################################################################
+## Step 9: Non-Linear Triangulation
+# Write a function: NonLinearTriangulation
+# Inputs:
+# - K: Intrinsic camera matrix of the first camera (3x3).
+# - C0, R0: Translation (3x1) and rotation (3x3) of the first camera.
+# - Cseti, Rseti: Translations and rotations of other cameras in a list.
+# - x1set, x2set: Sets of 2D points in each image for triangulation.
+# - X0: Initial 3D points for optimization.
+# Output:
+# - Returns optimized 3D points after minimizing reprojection error.
+# NonlinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set, X0):
+################################################################################
 
 # ################################################################################
 # # Step 10: PnPRANSAC
