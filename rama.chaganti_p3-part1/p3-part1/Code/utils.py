@@ -302,6 +302,8 @@ def PlotPtsCams(C_list, R_list, X_list, save_dir, filename="OneCameraPoseWithPoi
     # Set axis labels, legend, and save
     plt.xlabel("X")
     plt.ylabel("Z")
+    plt.xlim([-15, 15]) 
+    plt.ylim([-5, 30]) 
     plt.title("Selected Camera Pose and 3D Points (XZ Plane)")
     plt.legend()
     save_path = f"{save_dir}/{filename}"

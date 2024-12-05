@@ -228,7 +228,7 @@ print("\nPerforming Non-Linear Triangulation...")
 X_refined = NonlinearTriangulation(K, np.zeros((3, 1)), np.eye(3), C, R, source_inliers, target_inliers, X)
 print("\nOptimized 3D Points:")
 print(X_refined)
-PlotPtsCams([C], [R], [X_refined], output_path, "Refined3DPoints_2D.png")
+PlotPtsCams([C,C], [R,R], [X_refined,X], output_path, "Refined3DPoints_2D.png")
 
 # ################################################################################
 # # Step 10: PnPRANSAC

@@ -28,8 +28,9 @@ def DisambiguateCameraPose(Cset, Rset, Xset):
         for Xi in Xseti:
             # Extract 3D point in world coordinates
             X_world = Xi[1:4]  # Skip ID, consider [X, Y, Z] coordinates
+            #print(X_world.shape)
             X_world_homo = np.hstack((X_world, [1]))  # Convert to homogeneous
-
+            #print(X_world_homo.shape)
             # Compute the depth in the candidate camera's coordinate system
             X_cam_candidate = Rseti @ (X_world_homo[:3] - Cseti.flatten())
             depth_candidate = X_cam_candidate[2]  # Z-coordinate
