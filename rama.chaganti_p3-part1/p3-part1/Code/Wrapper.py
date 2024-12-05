@@ -85,9 +85,6 @@ ParseKeypoints_DF = ParseKeypoints(file_path, source_camera_index, target_camera
 source_keypoints = ParseKeypoints_DF[[0, 2, 3]]
 target_keypoints = ParseKeypoints_DF[[0, 5, 6]]
 
-# print(f'\nSource Keypoints: "  {source_keypoints[2]}')
-
-# print(f'\nSource Keypoints: "  {target_keypoints[6]}')
 source_all_points = source_keypoints[[2, 3]].to_numpy()
 target_all_points = target_keypoints[[5, 6]].to_numpy()
 ################################################################################
@@ -110,15 +107,7 @@ target_inlier_points = target_inliers.to_numpy()
 print(bcolors.OKCYAN + "\nFundamental Matrix F:" + bcolors.OKCYAN)
 print(F, '\n')
 
-
-# #################################################################################
-# # You will write another function 'EstimateFundamentalMatrix' that computes F matrix
-# # This function is being called by the 'GetInliersRANSAC' function
-# #################################################################################
-
-# # Visualize the final feature correspondences after computing the correct Fundamental Matrix.
-# # Write a code to print the final feature matches and compare them with the original ones.
-
+# Visualize the final feature correspondences after computing the correct Fundamental Matrix.
 output_path = '../Output/'
 DrawMatches('../Data/Imgs/', source_camera_index, target_camera_index, source_all_points, target_all_points, source_inlier_points, target_inlier_points, output_path)
 
@@ -155,105 +144,61 @@ Cset, Rset = ExtractCameraPose(E)
 Xset = []
 # Iterate over each camera pose in Cset and Rset
 for i in range(4):
-    # Perform linear triangulation to estimate the 3D points given:
-    # - K: Intrinsic camera matrix
-    # - np.zeros((3,1)): The initial camera center (assumes origin for the first camera)
-    # - np.eye(3): The initial camera rotation (identity matrix, assuming no rotation for the first camera)
-    # - Cset[i]: Camera center for the i-th pose
-    # - Rset[i]: Rotation matrix for the i-th pose
-    # - source_inliers: Inlier points in the source image
-    # - target_inliers: Corresponding inlier points in the target image
+    # Perform linear triangulation to estimate the 3D points
     Xset_i = LinearTriangulation(K, np.zeros((3,1)), np.eye(3), Cset[i], Rset[i], source_inliers, target_inliers)
     Xset.append(Xset_i)
 
 ################################################################################
 ## Step 7: Plot all points and camera poses
-# Write a function: PlotPtsCams that visualizes the 3D points and the estimated camera poses.
 ################################################################################
 
-# Arguments:
-# - Cset: List of camera centers for each pose.
-# - Rset: List of rotation matrices for each pose.
-# - Xset: List of triangulated 3D points corresponding to each camera pose.
-# - SAVE_DIR: Output directory to save the plot.
-# - FourCameraPose.png: Filename for the output plot showing 3D points and camera poses.
 PlotCameraPts(Cset, Rset, Xset, output_path, "FourCameraPose.png")
-
 
 ################################################################################
 ## Step 8: Disambiguate Camera Pose
-# Write a function: DisambiguateCameraPose
-# DisambiguateCameraPose is called to identify the correct camera pose from multiple
-# hypothesized poses. It selects the pose with the most inliers in front of both 
-# cameras (i.e., the pose with the most consistent triangulated 3D points).
 ################################################################################
 
-## Disambiguate camera poses
-# Arguments:
-# - Cset: List of candidate camera centers for each pose.
-# - Rset: List of candidate rotation matrices for each pose.
-# - Xset: List of sets of triangulated 3D points for each camera pose.
-# Returns:
-# - C: The selected camera center after disambiguation.
-# - R: The selected rotation matrix after disambiguation.
-# - X: The triangulated 3D points for the selected camera pose.
-# - selectedIdx: The index of the selected camera pose within the original candidate sets.
 C, R, X, selectedIdx = DisambiguateCameraPose(Cset, Rset, Xset)
 
 # Plot the selected camera pose with its 3D points
-# This plot shows the selected camera center, orientation, and the corresponding 3D points.
-# Arguments:
-# - [C]: List containing the selected camera center (wrapping it in a list for compatibility with PlotPtsCams).
-# - [R]: List containing the selected rotation matrix.
-# - [X]: List containing the 3D points for the selected camera pose.
-# - SAVE_DIR: Output directory to save the plot.
-# - OneCameraPoseWithPoints.png: Filename for the output plot showing both the camera pose and 3D points.
-# - show_pos=True: Enables the display of the camera pose.
 PlotPtsCams([C], [R], [X], output_path, "OneCameraPoseWithPoints.png")
 
 ################################################################################
 ## Step 9: Non-Linear Triangulation
-# Write a function: NonLinearTriangulation
-# Inputs:
-# - K: Intrinsic camera matrix of the first camera (3x3).
-# - C0, R0: Translation (3x1) and rotation (3x3) of the first camera.
-# - Cseti, Rseti: Translations and rotations of other cameras in a list.
-# - x1set, x2set: Sets of 2D points in each image for triangulation.
-# - X0: Initial 3D points for optimization.
-# Output:
-# - Returns optimized 3D points after minimizing reprojection error.
 ################################################################################
 print("\nPerforming Non-Linear Triangulation...")
-# Perform non-linear triangulation to refine the 3D points
 X_refined = NonlinearTriangulation(K, np.zeros((3, 1)), np.eye(3), C, R, source_inliers, target_inliers, X)
 print("\nOptimized 3D Points:")
 print(X_refined)
-PlotPtsCams([C,C], [R,R], [X_refined,X], output_path, "Refined3DPoints_2D.png")
-
+PlotPtsCams([C,C], [R,R], [X,X_refined], output_path, "Refined3DPoints_2D.png")
+xset=target_inliers[['x','y']].to_numpy()
 # ################################################################################
-# # Step 10: PnPRANSAC
-# # PnPRANSAC: Function to perform PnP using RANSAC to find the best camera pose 
-# # with inliers
+# # Step 10: PnP RANSAC
 # ################################################################################
 
-# ################################################################################
-# # Step 11: NonLinearPnP
-# # NonLinearPnP: Refines the camera pose (position and orientation) using non-linear 
-# # optimization to minimize the reprojection error between observed 2D points and 
-# # projected 3D points.
-# ################################################################################
+print("\nPerforming PnP RANSAC...")
+Cnew, Rnew, best_inliers_X, best_inliers_x=PnPRANSAC(X_refined, xset, K, M=2000, T=10)
+PlotPtsCams([Cnew], [Rnew], [best_inliers_X], output_path, "RefinedCameraProjection_2D.png")
+################################################################################
+# Step 11: NonLinearPnP
+# NonLinearPnP: Refines the camera pose (position and orientation) using non-linear 
+# optimization to minimize the reprojection error between observed 2D points and 
+# projected 3D points.
+################################################################################
+print("\nPerforming Non-Linear PnP...")
+Copt, Ropt = NonlinearPnP(best_inliers_X, best_inliers_x, K, Cnew, Rnew)
+
+################################################################################
+# Step 12: BuildVisibilityMatrix
+# BuildVisibilityMatrix: BuildVisibilityMatrix: Constructs a sparse visibility 
+# matrix for bundle adjustment. This matrix indicates which parameters affect 
+# each observation in the optimization process.
+################################################################################
 
 
-# ################################################################################
-# # Step 12: BuildVisibilityMatrix
-# # BuildVisibilityMatrix: BuildVisibilityMatrix: Constructs a sparse visibility 
-# # matrix for bundle adjustment. This matrix indicates which parameters affect 
-# # each observation in the optimization process.
-# ################################################################################
-
-# ################################################################################
-# # Step 13: BundleAdjustment
-# # BundleAdjustment: Refines camera poses and 3D point positions to minimize the 
-# # reprojection error for a set of cameras and 3D points using non-linear 
-# # optimization.
-# ################################################################################
+################################################################################
+# Step 13: BundleAdjustment
+# BundleAdjustment: Refines camera poses and 3D point positions to minimize the 
+# reprojection error for a set of cameras and 3D points using non-linear 
+# optimization.
+################################################################################

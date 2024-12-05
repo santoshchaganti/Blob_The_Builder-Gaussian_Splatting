@@ -67,11 +67,19 @@ def NonlinearPnP(Xs, xs, K, Cnew, Rnew):
     x0 = np.concatenate([C_init, q_init])  # Combine position and quaternion for optimization
     
     # Prepare the 3D points and 2D points for optimization
-    X_data = Xs.iloc[:, 1:4].values  # Extract [X, Y, Z] coordinates from the 3D points
-    x_data = xs.iloc[:, 1:3].values  # Extract [u, v] coordinates from the 2D points
+    X_data = Xs[:, 1:4]  # Extract [X, Y, Z] coordinates from the 3D points
+    x_data = xs[:, 1:3] # Extract [u, v] coordinates from the 2D points
     
     # Run non-linear optimization to minimize reprojection error
-    result = least_squares(reprojection_loss, x0, args=(X_data, x_data, K), method='lm')
+    # result = least_squares(reprojection_loss, x0, args=(X_data, x_data, K), verbose=2, method='lm')
+    result = least_squares(reprojection_loss, x0, args=(X_data, x_data, K),verbose=2, method='trf',  # Trust-region reflective for handling nonlinearity
+    # bounds=(lb, ub),  # Define parameter bounds
+    loss='soft_l1',  # Robust loss for outliers and nonlinearity
+    ftol=1e-8,
+    xtol=1e-6,
+    gtol=1e-8,
+    max_nfev=5000
+ ) 
     
     # Extract the optimized camera position and rotation matrix from the solution
     Copt = result.x[:3].reshape(3, 1)  # Optimized camera position (3x1)

@@ -14,10 +14,10 @@ def GetVmatrix(All_Inlier):
     """
       
     # Extract each component from the array
-    u = All_Inlier.iloc[:, 1].values  # u coordinates
-    v = All_Inlier.iloc[:, 2].values  # v coordinates
-    point_ids = All_Inlier.iloc[:, 0].values  # Point IDs
-    camera_ids = All_Inlier.iloc[:, 3].values  # Camera IDs
+    u = All_Inlier[:, 1]  # u coordinates
+    v = All_Inlier[:, 2]  # v coordinates
+    point_ids = All_Inlier[:, 0]  # Point IDs
+    camera_ids = All_Inlier[:, 3]  # Camera IDs
 
     # Concatenate u, v, PointID, and CameraID into a single matrix
     Vmatrix = np.column_stack((u, v, point_ids, camera_ids))

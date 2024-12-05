@@ -64,7 +64,7 @@ def NonlinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set, X0):
             else:
                 # Concatenate errors for both views
                 #print((x_obs - x_proj).ravel())
-                error = np.concatenate([error, (x_obs - x_proj).ravel()])
+                error = np.concatenate([error, (x_obs - x_proj).ravel()])**2
                 #print(error.shape)
                 # print("error:",error)
         return error
@@ -106,13 +106,14 @@ def NonlinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set, X0):
     # bounds=(lb, ub),  # Define parameter bounds
     loss='soft_l1',  # Robust loss for outliers and nonlinearity
     ftol=1e-8,
-    xtol=1e-8,
+    xtol=1e-6,
     gtol=1e-8,
     max_nfev=5000
  ) # Increase max iterations if needed)
     # Reshape optimized 3D points to Nx3 matrix
     
     X_opt = result.x.reshape(-1, 3)
+    print(reprojection_loss(X_opt, Ps, xsets))
     # print(X_opt)
     # Combine and return optimized 3D points with their corresponding IDs
     return np.column_stack((point_ids, X_opt))

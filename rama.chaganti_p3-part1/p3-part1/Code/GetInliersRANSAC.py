@@ -4,7 +4,7 @@ import random
 from tqdm import tqdm
 from EstimateFundamentalMatrix import EstimateFundamentalMatrix
 
-def GetInliersRANSAC(x1All, x2All, M=3000, T=0.05):
+def GetInliersRANSAC(x1All, x2All, M=1500, T=0.5):
     """
     Estimates the Fundamental matrix using RANSAC and identifies inlier matches
     between two sets of points, rejecting outliers.

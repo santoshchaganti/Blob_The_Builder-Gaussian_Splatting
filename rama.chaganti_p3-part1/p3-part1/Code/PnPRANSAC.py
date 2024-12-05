@@ -17,8 +17,8 @@ def CalReprojErr(X, x, P):
     Returns:
     - e: Reprojection error (scalar).
     """
-    u = x[1]  # x-coordinate in the image
-    v = x[2]  # y-coordinate in the image
+    u = x[0]  # x-coordinate in the image
+    v = x[1]  # y-coordinate in the image
 
     # Convert 3D point X to homogeneous coordinates without ID
     X_noID = np.concatenate((X[1:], np.array([1])), axis=0)
@@ -48,8 +48,8 @@ def LinearPnP(X, x, K):
     Returns:
     - P: Camera projection matrix (3x4).
     """
-    X = X.to_numpy()
-    x = x.to_numpy()
+    # X = X.to_numpy()
+    # x = x.to_numpy()
 
     # Construct the linear system A from the correspondences
     n = X.shape[0]
@@ -57,8 +57,8 @@ def LinearPnP(X, x, K):
     
     for i in range(n):
         X_i = np.concatenate((X[i, 1:], [1]))  # Convert to homogeneous coordinates
-        u = x[i, 1]
-        v = x[i, 2]
+        u = x[i, 0]
+        v = x[i, 1]
         
         # Fill A matrix based on the equations from the lecture
         A[2*i] = np.concatenate([np.zeros(4), -X_i, v*X_i])
@@ -104,8 +104,8 @@ def PnPRANSAC(Xset, xset, K, M=2000, T=10):
         sample_indices = random.sample(range(n_points), 6)
                 
         # Extract subsets of 3D and 2D points
-        X_subset = Xset.iloc[sample_indices]
-        x_subset = xset.iloc[sample_indices]
+        X_subset = Xset[sample_indices]
+        x_subset = xset[sample_indices]
 
         # Estimate projection matrix P using LinearPnP with the selected points
         P = LinearPnP(X_subset, x_subset, K)
@@ -114,8 +114,8 @@ def PnPRANSAC(Xset, xset, K, M=2000, T=10):
         current_inliers = []
         for j in range(n_points):
             # Calculate reprojection error
-            error = CalReprojErr(Xset.iloc[j].values, xset.iloc[j].values, P)
-            
+            error = CalReprojErr(Xset[j], xset[j], K@P)
+            # print(error)
             # If error is below threshold T, consider it as an inlier
             if error < T:
                 current_inliers.append(j)
@@ -133,5 +133,6 @@ def PnPRANSAC(Xset, xset, K, M=2000, T=10):
     # Enforce orthogonality of R
     U, _, Vt = np.linalg.svd(R)
     Rnew = U @ Vt
-    
-    return Cnew, Rnew, best_inliers  # Return the estimated camera center, rotation matrix, and inliers
+    Xnew = Xset[best_inliers]
+    xnew = xset[best_inliers]
+    return Cnew, Rnew, Xnew, xnew  # Return the estimated camera center, rotation matrix, and inliers

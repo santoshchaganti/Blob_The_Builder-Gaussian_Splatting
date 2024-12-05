@@ -24,7 +24,8 @@ def EstimateFundamentalMatrix(x1DF, x2DF):
         centroid = np.mean(points, axis=0)
         centered_points = points - centroid
         mean_dist = np.mean(np.sqrt(np.sum(centered_points**2, axis=1)))
-        scale = np.sqrt(2) / mean_dist
+        # scale = np.sqrt(2) / mean_dist
+        scale = 1/ mean_dist
         T = np.array([
             [scale, 0,  -scale*centroid[0]],
             [0, scale,  -scale*centroid[1]],
@@ -54,10 +55,10 @@ def EstimateFundamentalMatrix(x1DF, x2DF):
     F = np.dot(U, np.dot(np.diag(S), Vt))
 
     # Step 5: Scaling - Ensure the last element of F is 1
-    F = F / F[2, 2]
+    
 
     # Step 6: Denormalize the Fundamental Matrix
     F = np.dot(T2.T, np.dot(F, T1))
-    
+    F = (F / F[2, 2])*100
 
     return F
