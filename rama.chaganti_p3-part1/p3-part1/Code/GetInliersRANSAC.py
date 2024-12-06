@@ -4,7 +4,7 @@ import random
 from tqdm import tqdm
 from EstimateFundamentalMatrix import EstimateFundamentalMatrix
 
-def GetInliersRANSAC(x1All, x2All, M=1500, T=0.5):
+def GetInliersRANSAC(x1All, x2All, M=1500, T=0.1):
     """
     Estimates the Fundamental matrix using RANSAC and identifies inlier matches
     between two sets of points, rejecting outliers.
@@ -24,6 +24,7 @@ def GetInliersRANSAC(x1All, x2All, M=1500, T=0.5):
     # print("Source Keypoints Columns:", x1All.columns)
     # print("Target Keypoints Columns:", x2All.columns)
     
+    feature_idex=x1All[[0]].to_numpy()
     x1All = x1All[[2, 3]].to_numpy()
     x2All = x2All[[5, 6]].to_numpy()
 
@@ -61,10 +62,14 @@ def GetInliersRANSAC(x1All, x2All, M=1500, T=0.5):
             FBest = F
             x1Inlier = x1All[inliers]
             x2Inlier = x2All[inliers]
+            feature_idex_inliers=feature_idex[inliers]
+
 
     # Convert inliers back to DataFrames
-    x1Inlier = pd.DataFrame(x1Inlier, columns=['x', 'y'])
-    x2Inlier = pd.DataFrame(x2Inlier, columns=['x', 'y'])
+    x1Inlier = [(feature_idex_inliers[i], *x1Inlier[i]) for i in range(len(feature_idex_inliers))]
+    x2Inlier = [(feature_idex_inliers[i], *x2Inlier[i]) for i in range(len(feature_idex_inliers))]
+    x1Inlier = pd.DataFrame(x1Inlier, columns=['Id','x', 'y'])
+    x2Inlier = pd.DataFrame(x2Inlier, columns=['Id','x', 'y'])
     
 
     return x1Inlier, x2Inlier, FBest

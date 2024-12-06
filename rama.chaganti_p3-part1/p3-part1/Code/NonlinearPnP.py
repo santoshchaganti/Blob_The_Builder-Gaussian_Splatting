@@ -36,40 +36,55 @@ def NonlinearPnP(Xs, xs, K, Cnew, Rnew):
         
         # Extract the camera translation vector (position) from the optimization variable x
         C = x[:3][:, None]  # Camera position (3x1)
-        
+        # print(C)
         # Convert the quaternion (x[3:]) to a rotation matrix R (3x3)
         R = Rotation.from_quat(x[3:]).as_matrix()
         
+        # print(f"in loss",R,C)
         # Construct the projection matrix P using the rotation and translation
         I = np.eye(3)
         P = np.matmul(np.matmul(K, R), np.concatenate((I, -C), axis=1))
         
         # Prepare the 3D points in homogeneous coordinates
         Xset = np.pad(Xset, ((0, 0), (0, 1)), constant_values=1).T  # [X, Y, Z, 1] format
-        
+        # print(Xset)
         # Project the 3D points Xset into the 2D image plane using the projection matrix P
         x_proj = np.matmul(P, Xset).T  # Projected 2D points in homogeneous coordinates [x, y, z]
         x_proj = x_proj / x_proj[:, 2, None]  # Normalize to get pixel coordinates [u, v, 1]
         x_proj = x_proj[:, :2]  # Extract [u, v] coordinates
-        
+        # print(f'Xset', Xset.dtype)
+        # print(f'xxset', xset.dtype)
+        # print(f'x_proj', x_proj.data)
         # Calculate the reprojection error as the difference between observed and projected points
-        residuals = (xset - x_proj).ravel()  # Flatten the error array for least_squares
+        #print(f'xset', xset,'x_proj', x_proj)
         
+        residuals = (xset - x_proj).ravel()  # Flatten the error array for least_squares
+        # print(residuals)
+        # print(f'residual before', residuals.dtype)
+        # residuals = np.array(residuals, dtype = np.float64)
+
+        # print(f'residual error:', residuals.dtype)
+        # if not np.all(np.isfinite(residuals)):
+        #     raise ValueError("Non-finite residuals computed in reprojection_loss.")
         return residuals
         
     # Convert initial rotation matrix Rnew to a quaternion representation
     r = Rotation.from_matrix(Rnew)
     quat = r.as_quat()
     
+    print(f"initial guess",Rnew,Cnew)
     # Initial parameters for optimization: flatten camera position and convert rotation to quaternion
     C_init = Cnew.flatten()  # Initial camera position as a 1D array (3,)
     q_init = quat  # Initial rotation as a quaternion (4,)
     x0 = np.concatenate([C_init, q_init])  # Combine position and quaternion for optimization
-    
+    if not np.all(np.isfinite(x0)):
+        raise ValueError("Initial guess x0 contains non-finite values.")
+    # print(quat,C_init)
     # Prepare the 3D points and 2D points for optimization
     X_data = Xs[:, 1:4]  # Extract [X, Y, Z] coordinates from the 3D points
     x_data = xs[:, 1:3] # Extract [u, v] coordinates from the 2D points
     
+    #print(X_data,x_data)
     # Run non-linear optimization to minimize reprojection error
     # result = least_squares(reprojection_loss, x0, args=(X_data, x_data, K), verbose=2, method='lm')
     result = least_squares(reprojection_loss, x0, args=(X_data, x_data, K),verbose=2, method='trf',  # Trust-region reflective for handling nonlinearity

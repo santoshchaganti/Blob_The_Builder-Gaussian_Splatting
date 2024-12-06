@@ -17,9 +17,9 @@ def CalReprojErr(X, x, P):
     Returns:
     - e: Reprojection error (scalar).
     """
-    u = x[0]  # x-coordinate in the image
-    v = x[1]  # y-coordinate in the image
-
+    u = x[1]  # x-coordinate in the image
+    v = x[2]  # y-coordinate in the image
+    #print(u,v)
     # Convert 3D point X to homogeneous coordinates without ID
     X_noID = np.concatenate((X[1:], np.array([1])), axis=0)
     
@@ -53,27 +53,37 @@ def LinearPnP(X, x, K):
 
     # Construct the linear system A from the correspondences
     n = X.shape[0]
-    A = np.zeros((2*n, 12))
+    
+    # Initialize matrix A (2n x 12)
+    A = np.zeros((2 * n, 12))
     
     for i in range(n):
-        X_i = np.concatenate((X[i, 1:], [1]))  # Convert to homogeneous coordinates
-        u = x[i, 0]
-        v = x[i, 1]
+        # Convert 3D point X[i] to homogeneous coordinates (X, Y, Z, 1)
+        X_i = np.concatenate((X[i, :], [1]))  # Assuming X[i] = [X, Y, Z]
         
-        # Fill A matrix based on the equations from the lecture
-        A[2*i] = np.concatenate([np.zeros(4), -X_i, v*X_i])
-        A[2*i + 1] = np.concatenate([X_i, np.zeros(4), -u*X_i])
+        # Extract 2D points (u, v)
+        u = x[i, 1]
+        v = x[i, 2]
+        
+        # print(u,v)
+        # print(X_i[1:])
+        # Fill A matrix based on the equations from the epipolar constraint
+        A[2 * i] = np.concatenate([np.zeros(4), -X_i[1:], v * X_i[1:]])  # For the v equation
+        #print(A)
+        A[2 * i + 1] = np.concatenate([X_i[1:], np.zeros(4), -u * X_i[1:]])  # For the u equation
     
-    # Solve the linear system using Singular Value Decomposition (SVD)
-    # Last column of V gives the solution for P
+    # Solve the system using SVD to get the projection matrix
     _, _, V = np.linalg.svd(A)
-    p = V[-1, :]  # Get last row of V
-    P = p.reshape(3, 4)  # Reshape into 3x4 projection matrix
+    p = V[-1, :]  # Get the last row of V (solution)
     
-    # Recover the calibrated projection matrix
-    P = np.linalg.inv(K) @ P
+    # Reshape the solution into a 3x4 projection matrix
+    P = p.reshape(3, 4)
     
-    return P
+    # Recover the calibrated projection matrix using the intrinsic matrix K
+    P_calibrated = np.linalg.inv(K) @ P
+    
+    return P_calibrated
+
 
 # Function to perform PnP using RANSAC to find the best camera pose with inliers
 def PnPRANSAC(Xset, xset, K, M=2000, T=10):
@@ -115,7 +125,7 @@ def PnPRANSAC(Xset, xset, K, M=2000, T=10):
         for j in range(n_points):
             # Calculate reprojection error
             error = CalReprojErr(Xset[j], xset[j], K@P)
-            # print(error)
+            #print(error)
             # If error is below threshold T, consider it as an inlier
             if error < T:
                 current_inliers.append(j)
@@ -132,7 +142,8 @@ def PnPRANSAC(Xset, xset, K, M=2000, T=10):
     
     # Enforce orthogonality of R
     U, _, Vt = np.linalg.svd(R)
-    Rnew = U @ Vt
+    Rnew = R
     Xnew = Xset[best_inliers]
     xnew = xset[best_inliers]
+    #print(Xnew,xnew)
     return Cnew, Rnew, Xnew, xnew  # Return the estimated camera center, rotation matrix, and inliers

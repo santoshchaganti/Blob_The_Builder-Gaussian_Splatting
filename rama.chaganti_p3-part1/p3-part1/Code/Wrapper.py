@@ -77,6 +77,7 @@ target_camera_index = 2
 # The output DataFrame provides a structured set of matched keypoints between two images.
 ParseKeypoints_DF = ParseKeypoints(file_path, source_camera_index, target_camera_index)
 
+
 # Extract coordinates for source and target keypoints
 # Select specific columns to represent keypoint coordinates in each image
 # - 0: Keypoint ID, which uniquely identifies each match
@@ -101,11 +102,13 @@ target_all_points = target_keypoints[[5, 6]].to_numpy()
 # using initial feature correspondences
 
 source_inliers, target_inliers, F = GetInliersRANSAC(source_keypoints, target_keypoints)
+#print(source_inliers['Id'])
 source_inlier_points = source_inliers.to_numpy()
 target_inlier_points = target_inliers.to_numpy()
 
 print(bcolors.OKCYAN + "\nFundamental Matrix F:" + bcolors.OKCYAN)
 print(F, '\n')
+
 
 # Visualize the final feature correspondences after computing the correct Fundamental Matrix.
 output_path = '../Output/'
@@ -169,12 +172,69 @@ PlotPtsCams([C], [R], [X], output_path, "OneCameraPoseWithPoints.png")
 print("\nPerforming Non-Linear Triangulation...")
 X_refined = NonlinearTriangulation(K, np.zeros((3, 1)), np.eye(3), C, R, source_inliers, target_inliers, X)
 print("\nOptimized 3D Points:")
-print(X_refined)
+#print(X_refined)
 PlotPtsCams([C,C], [R,R], [X,X_refined], output_path, "Refined3DPoints_2D.png")
 xset=target_inliers[['x','y']].to_numpy()
 # ################################################################################
 # # Step 10: PnP RANSAC
 # ################################################################################
+c_g_set=[np.zeros((3, 1))]
+R_g_set=[np.eye(3)]
+c_g_set.append(C)
+R_g_set.append(R)
+for i in range(2,6):
+            source_camera_index = i
+            target_camera_index = i+1
+            file_path=f'../Data/new_matching{i-1}.txt'
+            print(file_path)
+            ParseKeypoints_DF = ParseKeypoints(file_path, source_camera_index, target_camera_index)
+            # print(ParseKeypoints_DF)
+            source_keypoints = ParseKeypoints_DF[[0, 2, 3]]
+            target_keypoints = ParseKeypoints_DF[[0, 5, 6]]
+            source_all_points = source_keypoints[[2, 3]].to_numpy()
+            target_all_points = target_keypoints[[5, 6]].to_numpy()
+            source_inliers, target_inliers, F = GetInliersRANSAC(source_keypoints, target_keypoints)
+            xset=target_inliers.to_numpy()
+            
+            col1 = np.array([x[0][0] if isinstance(x[0], np.ndarray) else x[0] for x in xset])  # Handle nested arrays
+            col2 = np.array([x[0] for x in X_refined])  # Extract directly
+
+            # Find common values in the 0th column
+            common_values = np.intersect1d(col1, col2)
+
+            # Extract rows with common values for both arrays
+            # xnset = np.array([row for row in xset if (row[0][0] if isinstance(row[0], np.ndarray) else row[0]) in common_values])
+            X_nrefined = np.array([row for row in X_refined if row[0] in common_values])
+             
+            # xnset data is like this  [array([1232], dtype=int64) 744.8 449.73] chnage to [1232, 744.8, 449.73]
+            xnset = np.array([[
+                row[0][0] if isinstance(row[0], np.ndarray) else row[0], 
+                row[1], 
+                row[2]
+            ] for row in xset if (row[0][0] if isinstance(row[0], np.ndarray) else row[0]) in common_values])
+
+            #print(xnset,X_nrefined)
+
+            Cnew, Rnew, best_inliers_X, best_inliers_x=PnPRANSAC(X_nrefined, xnset, K, M=2000, T=30)
+            # print(f'best_inliers_x:', best_inliers_x)
+            # print(Cnew,Rnew)
+            Cnew, Rnew = NonlinearPnP(best_inliers_X, best_inliers_x, K, Cnew, Rnew)
+            # print(c_g_set[i-1],Cnew)
+            # print(R_g_set[i-1],Rnew)
+            file_path=f'../Data/new_matching{i}.txt'
+            print(file_path)
+            ParseKeypoints_DF = ParseKeypoints(file_path, source_camera_index, target_camera_index)
+            # print(ParseKeypoints_DF)
+            source_keypoints = ParseKeypoints_DF[[0, 2, 3]]
+            target_keypoints = ParseKeypoints_DF[[0, 5, 6]]
+            source_all_points = source_keypoints[[2, 3]].to_numpy()
+            target_all_points = target_keypoints[[5, 6]].to_numpy()
+            source_inliers, target_inliers, F = GetInliersRANSAC(source_keypoints, target_keypoints)
+            X_new = LinearTriangulation(K, c_g_set[i-1], R_g_set[i-1], Cnew, Rnew, source_inliers, target_inliers)
+            #print(X_new)
+            X_new = NonlinearTriangulation(K, c_g_set[i-1], R_g_set[i-1], Cnew, Rnew, source_inliers, target_inliers, X_new)
+            X_refined=np.concatenate((X_refined,X_new))
+            print(X_refined)
 
 print("\nPerforming PnP RANSAC...")
 Cnew, Rnew, best_inliers_X, best_inliers_x=PnPRANSAC(X_refined, xset, K, M=2000, T=10)

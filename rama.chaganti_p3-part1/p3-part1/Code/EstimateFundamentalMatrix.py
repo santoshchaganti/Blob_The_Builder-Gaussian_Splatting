@@ -42,7 +42,7 @@ def EstimateFundamentalMatrix(x1DF, x2DF):
     for i in range(x1_norm.shape[0]):
         x1, y1 = x1_norm[i, :2]
         x2, y2 = x2_norm[i, :2]
-        A.append([x2 * x1, x2 * y1, x2, y2 * x1, y2 * y1, y2, x1, y1, 1])
+        A.append([x2 * x1, x2 * y1, x2, y2 * x1, y1 * y2, y2, x1, y1, 1])
     A = np.array(A)
 
     # Step 3: Solve Using SVD
@@ -59,6 +59,6 @@ def EstimateFundamentalMatrix(x1DF, x2DF):
 
     # Step 6: Denormalize the Fundamental Matrix
     F = np.dot(T2.T, np.dot(F, T1))
-    F = (F / F[2, 2])*100
+    F = (F / F[2, 2])
 
     return F

@@ -81,7 +81,7 @@ def NonlinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set, X0):
     # Identity matrix (3x3)
     I = np.eye(3)
     # Projection matrix for the first camera
-    P1 = K @ R0 @ np.hstack((I, -C0))
+    P1 = K @ R0 @ np.hstack((I, -C0.reshape(3,1)))
     # Projection matrix for the second camera
     P2 = K @ Rseti @ np.hstack((I, -Cseti.reshape(3,1)))
     # List of projection matrices for both views
@@ -105,8 +105,8 @@ def NonlinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set, X0):
     result = least_squares(reprojection_loss, x0, args=(Ps, xsets),verbose=2, method='trf',  # Trust-region reflective for handling nonlinearity
     # bounds=(lb, ub),  # Define parameter bounds
     loss='soft_l1',  # Robust loss for outliers and nonlinearity
-    ftol=1e-8,
-    xtol=1e-6,
+    ftol=1e-6,
+    xtol=1e-2,
     gtol=1e-8,
     max_nfev=5000
  ) # Increase max iterations if needed)

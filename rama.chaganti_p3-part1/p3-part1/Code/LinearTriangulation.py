@@ -45,10 +45,10 @@ def LinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set):
         ID = x1[0]  # Get point ID
         
         # Extract coordinates
-        x = x1[0]   # u1
-        y = x1[1]   # v1
-        x_cap = x2[0]   # u2
-        y_cap = x2[1]   # v2
+        x = x1[1]   # u1
+        y = x1[2]   # v1
+        x_cap = x2[1]   # u2
+        y_cap = x2[2]   # v2
         
         # Construct constraints matrix A
         A = []
@@ -65,9 +65,10 @@ def LinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set):
         X = X / X[-1]  # Normalize homogeneous coordinates
         
         # Append point ID and 3D coordinates
-        Xset.append([ID, X[0], X[1], X[2]])
+        Xset.append([ID[0], X[0], X[1], X[2]])
     
     # Convert to numpy array
+    #print(Xset)
     Xset = np.array(Xset)
     
     return Xset
