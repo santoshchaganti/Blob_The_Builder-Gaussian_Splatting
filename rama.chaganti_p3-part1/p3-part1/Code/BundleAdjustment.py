@@ -3,10 +3,11 @@ import sys
 import pandas as pd
 
 from scipy.spatial.transform import Rotation
+from BuildVisibilityMatrix import BuildVisibilityMatrix
 from scipy.optimize import least_squares
 
 # Function to perform Bundle Adjustment to optimize camera poses and 3D point positions
-def BundleAdjustment(Call, Rall, Xall, K, sparseVmatrix, n_cameras, n_points, camera_indices, point_indices, xall):
+def BundleAdjustment(Call, Rall, Xall, K, n_cameras, n_points, camera_indices, point_indices, xall):
     """
     BundleAdjustment: Refines camera poses and 3D point positions to minimize the reprojection error
     for a set of cameras and 3D points using non-linear optimization.
@@ -80,13 +81,20 @@ def BundleAdjustment(Call, Rall, Xall, K, sparseVmatrix, n_cameras, n_points, ca
         # Calculate the reprojection error as the difference between observed and projected points
         reprojection_error = (xall - x_proj).ravel()
         
+        print(f"reprojection_error type: {type(reprojection_error)}")
+        print(f"reprojection_error shape: {reprojection_error.shape}")
+        print(f"reprojection_error size: {reprojection_error.size}")
+        print(f"reprojection_error dtype: {reprojection_error.dtype}")
+        print(f"reprojection_error ndim: {reprojection_error}")
+        
         return reprojection_error
+    
     
     print("\n Running BA.....")
 
     # Initial parameters setup
     # Concatenate initial camera positions and orientations (as quaternions) into a single parameter vector `init_x`
-    init_x = []
+    init_x = np.array([])
     for idx, (Ci, Ri) in enumerate(zip(Call, Rall)):
                 
         # Convert rotation matrix to quaternion for initialization
@@ -97,17 +105,55 @@ def BundleAdjustment(Call, Rall, Xall, K, sparseVmatrix, n_cameras, n_points, ca
             continue  # Skip first camera since it's fixed
         else:
             # Append other cameras' parameters
-            init_x.extend(Ci.flatten())  # Add camera position
-            init_x.extend(qi)  # Add quaternion
+            init_x = np.concatenate((init_x, Ci.flatten()))  # Add camera position
+            init_x = np.concatenate((init_x, qi))  # Add quaternion
     
     # Flatten the initial 3D points and add them to the parameter vector `init_x`
-    X_init = Xall.iloc[:, 1:4].values  # Extract [X, Y, Z] coordinates from the 3D points
-    point_ids = Xall.iloc[:, 0].values  # Extract point IDs for future use
-    init_x.extend(X_init.flatten())  # Append flattened 3D points to `init_x`
+    # Extract [X, Y, Z] coordinates from the 3D points
+    # X_init = Xall
+    X_init = Xall[:, 1:4]
+    # print(f"X_init type: {type(X_init)}")
+    # print(f"X_init shape: {X_init.shape}")
+    # print(f"X_init size: {X_init.size}")
+    # print(f"X_init dtype: {X_init.dtype}")
+    # print(f"X_init ndim: {X_init}")
+    # Extract point IDs for future use
+    point_ids = Xall[:, 0]
+    # print(f"point_ids type: {type(point_ids)}")
+    # print(f"point_ids shape: {point_ids.shape}")
+    # print(f"point_ids size: {point_ids.size}")
+    # print(f"point_ids dtype: {point_ids.dtype}")
+    # print(f"point_ids ndim: {point_ids}")
+    
+    
+    # Append flattened 3D points to `init_x`
+    init_x = np.append(init_x, X_init.flatten(), axis=0)
+    # print(f"init_x type: {type(init_x)}")
+    # print(f"init_x shape: {init_x.shape}")
+    print(f"init_x size: {init_x.size}")
+    # print(f"init_x dtype: {init_x.dtype}")
+    # print(f"init_x ndim: {init_x}")
+    
+    A = BuildVisibilityMatrix(n_cameras, n_points, camera_indices, point_indices)
+    
+    # print(f"A size before trimming: {A.size}")
+    print(f"A size: {A.shape}")
+    # trim A to the size of init_x 
+    A = A[:, :init_x.size]
+    # print(f"A size after trimming: {A.size}")
+    print(f"A shape after trimming: {A.shape}")
+    
+    
+    
+    #build visibility matrix
+    # A = BuildVisibilityMatrix(n_cameras, n_points, camera_indices, point_indices)
+    # print(f"sparseVmatrix type: {type(sparseVmatrix)}")
+    # print(f"sparseVmatrix format: {sparseVmatrix.getformat()}")
+    # print(f"sparseVmatrix shape: {sparseVmatrix.shape}")
     
     # Perform bundle adjustment using non-linear least squares optimization
     result = least_squares(reprojection_loss, init_x, args=(n_cameras, n_points, camera_indices, point_indices, xall, K),
-                         jac_sparsity=sparseVmatrix, verbose=2, x_scale='jac', method='trf')
+                         jac_sparsity=A, verbose=2, x_scale='jac', method='trf')
 
     # Extract optimized camera poses from the solution
     CoptAll = [np.zeros((3, 1))]  # First camera remains at origin

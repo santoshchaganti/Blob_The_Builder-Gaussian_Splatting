@@ -235,7 +235,58 @@ for i in range(2,6):
             #print(X_new)
             X_new = NonlinearTriangulation(K, c_g_set[i-1], R_g_set[i-1], Cnew, Rnew, source_inliers, target_inliers, X_new)
             X_refined=np.concatenate((X_refined,X_new))
-            print(X_refined)
+            # print(X_refined)
+            # 1. n_cameras: Count of cameras in your system
+            n_cameras = len(c_g_set)  # Since c_g_set contains all camera centers
+
+            # 2. n_points: Count of unique 3D points
+            n_points = X_refined.shape[0]  # Total number of 3D points
+
+            # 3 & 4. camera_indices and point_indices
+            # You need to create these arrays based on your observations
+            camera_indices = []
+            point_indices = []
+            xall = []  # Collection of 2D points
+
+            # Create point_map from X_refined
+            point_map = {int(point_id): idx for idx, point_id in enumerate(X_refined[:, 0])}
+
+            # Iterate through your matching files to build the indices
+            for i in range(2, 6):
+                file_path = f'../Data/new_matching{i-1}.txt'
+                ParseKeypoints_DF = ParseKeypoints(file_path, i, i+1)
+                
+                # Get point IDs and coordinates from the DataFrame
+                point_ids = ParseKeypoints_DF[0].values
+                x_coords = ParseKeypoints_DF[[2, 3]].values  # Get x,y coordinates
+                
+                # Filter only points that exist in our point_map
+                for pid, coords in zip(point_ids, x_coords):
+                    if int(pid) in point_map:
+                        camera_indices.append(i-2)
+                        point_indices.append(point_map[int(pid)])
+                        xall.append(coords)  # Add the 2D point coordinates
+
+            # Convert to numpy arrays
+            camera_indices = np.array(camera_indices)
+            point_indices = np.array(point_indices)
+            xall = np.array(xall)  # Convert 2D points to numpy array
+
+
+           
+
+            try:
+                CoptAll, RoptAll, XoptAll = BundleAdjustment(c_g_set, R_g_set, X_refined, K,
+                                                            n_cameras, n_points, camera_indices, point_indices, xall)
+            except ValueError as e:
+                print(f"\nError in Bundle Adjustment:")
+                print(f"Error message: {str(e)}")
+                raise
+
+            # c_g_set.append(CoptAll)
+            # R_g_set.append(RoptAll)
+            
+            
 
 print(c_g_set)
 print(R_g_set)
