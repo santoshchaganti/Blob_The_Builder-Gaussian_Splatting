@@ -180,8 +180,9 @@ xset=target_inliers[['x','y']].to_numpy()
 # ################################################################################
 c_g_set=[np.zeros((3, 1))]
 R_g_set=[np.eye(3)]
-c_g_set.append(C)
+c_g_set.append(C.reshape(3,1))
 R_g_set.append(R)
+print(c_g_set,R_g_set)
 for i in range(2,6):
             source_camera_index = i
             target_camera_index = i+1
@@ -219,8 +220,8 @@ for i in range(2,6):
             # print(f'best_inliers_x:', best_inliers_x)
             # print(Cnew,Rnew)
             Cnew, Rnew = NonlinearPnP(best_inliers_X, best_inliers_x, K, Cnew, Rnew)
-            # print(c_g_set[i-1],Cnew)
-            # print(R_g_set[i-1],Rnew)
+            c_g_set.append(Cnew)
+            R_g_set.append(Rnew)
             file_path=f'../Data/new_matching{i}.txt'
             print(file_path)
             ParseKeypoints_DF = ParseKeypoints(file_path, source_camera_index, target_camera_index)
@@ -236,9 +237,13 @@ for i in range(2,6):
             X_refined=np.concatenate((X_refined,X_new))
             print(X_refined)
 
-print("\nPerforming PnP RANSAC...")
-Cnew, Rnew, best_inliers_X, best_inliers_x=PnPRANSAC(X_refined, xset, K, M=2000, T=10)
-PlotPtsCams([Cnew], [Rnew], [best_inliers_X], output_path, "RefinedCameraProjection_2D.png")
+print(c_g_set)
+print(R_g_set)
+
+
+c_g_set=np.array(c_g_set)
+R_g_set=np.array(R_g_set)
+PlotPtsCams(c_g_set, R_g_set, [X_refined], output_path, "afterallCameraProjection_2D.png")
 ################################################################################
 # Step 11: NonLinearPnP
 # NonLinearPnP: Refines the camera pose (position and orientation) using non-linear 
