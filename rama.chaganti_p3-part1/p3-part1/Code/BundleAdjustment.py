@@ -81,11 +81,11 @@ def BundleAdjustment(Call, Rall, Xall, K, n_cameras, n_points, camera_indices, p
         # Calculate the reprojection error as the difference between observed and projected points
         reprojection_error = (xall - x_proj).ravel()
         
-        print(f"reprojection_error type: {type(reprojection_error)}")
-        print(f"reprojection_error shape: {reprojection_error.shape}")
-        print(f"reprojection_error size: {reprojection_error.size}")
-        print(f"reprojection_error dtype: {reprojection_error.dtype}")
-        print(f"reprojection_error ndim: {reprojection_error}")
+        # print(f"reprojection_error type: {type(reprojection_error)}")
+        # print(f"reprojection_error shape: {reprojection_error.shape}")
+        # print(f"reprojection_error size: {reprojection_error.size}")
+        # print(f"reprojection_error dtype: {reprojection_error.dtype}")
+        # print(f"reprojection_error ndim: {reprojection_error}")
         
         return reprojection_error
     
@@ -137,11 +137,11 @@ def BundleAdjustment(Call, Rall, Xall, K, n_cameras, n_points, camera_indices, p
     A = BuildVisibilityMatrix(n_cameras, n_points, camera_indices, point_indices)
     
     # print(f"A size before trimming: {A.size}")
-    print(f"A size: {A.shape}")
+    # print(f"A size: {A.shape}")
     # trim A to the size of init_x 
     A = A[:, :init_x.size]
     # print(f"A size after trimming: {A.size}")
-    print(f"A shape after trimming: {A.shape}")
+    # print(f"A shape after trimming: {A.shape}")
     
     
     
@@ -170,4 +170,4 @@ def BundleAdjustment(Call, Rall, Xall, K, n_cameras, n_points, camera_indices, p
     Xopt = result.x[7*(n_cameras-1):].reshape((-1, 3))
     XoptAll = pd.DataFrame(np.column_stack((point_ids, Xopt)), columns=['ID', 'X', 'Y', 'Z'])
     
-    return CoptAll, RoptAll, XoptAll  # Return optimized camera positions, rotation matrices, and 3D points
+    return np.array(CoptAll), np.array(RoptAll), np.array(XoptAll)  # Return optimized camera positions, rotation matrices, and 3D points

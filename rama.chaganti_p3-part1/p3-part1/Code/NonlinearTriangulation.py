@@ -93,16 +93,16 @@ def NonlinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set, X0):
     # Extract [u, v] coordinates from the first image's points
     # print(x1set)
     x1 = x1set[['x','y']].to_numpy()
-    print(x1.shape)
+    #print(x1.shape)
     # Extract [u, v] coordinates from the second image's points
     x2 = x2set[['x','y']].to_numpy()
-    print(x2.shape)
+    #print(x2.shape)
     # List of 2D point sets for both views
     xsets = [x1, x2]
     # lb = np.zeros_like(x0)  # Lower bound of 0 for all parameters
     # ub = np.full_like(x0, 30)  # Upper bound of 3 for all parameters
     # Perform non-linear optimization to minimize reprojection error
-    result = least_squares(reprojection_loss, x0, args=(Ps, xsets),verbose=2, method='trf',  # Trust-region reflective for handling nonlinearity
+    result = least_squares(reprojection_loss, x0, args=(Ps, xsets), method='trf',  # Trust-region reflective for handling nonlinearity
     # bounds=(lb, ub),  # Define parameter bounds
     loss='soft_l1',  # Robust loss for outliers and nonlinearity
     ftol=1e-6,
@@ -113,7 +113,7 @@ def NonlinearTriangulation(K, C0, R0, Cseti, Rseti, x1set, x2set, X0):
     # Reshape optimized 3D points to Nx3 matrix
     
     X_opt = result.x.reshape(-1, 3)
-    print(reprojection_loss(X_opt, Ps, xsets))
+    #print(reprojection_loss(X_opt, Ps, xsets))
     # print(X_opt)
     # Combine and return optimized 3D points with their corresponding IDs
     return np.column_stack((point_ids, X_opt))

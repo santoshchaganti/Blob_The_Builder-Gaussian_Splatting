@@ -182,7 +182,7 @@ c_g_set=[np.zeros((3, 1))]
 R_g_set=[np.eye(3)]
 c_g_set.append(C.reshape(3,1))
 R_g_set.append(R)
-print(c_g_set,R_g_set)
+#print(c_g_set,R_g_set)
 for i in range(2,6):
             source_camera_index = i
             target_camera_index = i+1
@@ -220,10 +220,10 @@ for i in range(2,6):
             # print(f'best_inliers_x:', best_inliers_x)
             # print(Cnew,Rnew)
             Cnew, Rnew = NonlinearPnP(best_inliers_X, best_inliers_x, K, Cnew, Rnew)
-            c_g_set.append(Cnew)
-            R_g_set.append(Rnew)
+            # c_g_set.append(Cnew)
+            # R_g_set.append(Rnew)
             file_path=f'../Data/new_matching{i}.txt'
-            print(file_path)
+            #print(file_path)
             ParseKeypoints_DF = ParseKeypoints(file_path, source_camera_index, target_camera_index)
             # print(ParseKeypoints_DF)
             source_keypoints = ParseKeypoints_DF[[0, 2, 3]]
@@ -283,8 +283,8 @@ for i in range(2,6):
                 print(f"Error message: {str(e)}")
                 raise
 
-            # c_g_set.append(CoptAll)
-            # R_g_set.append(RoptAll)
+            c_g_set=CoptAll
+            R_g_set=RoptAll
             
             
 
