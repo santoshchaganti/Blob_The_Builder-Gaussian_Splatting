@@ -10,6 +10,7 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 from PIL import Image
+from tqdm import tqdm
 
 
 # Import required functions for various steps in the SfM pipeline.
@@ -106,6 +107,13 @@ source_inliers, target_inliers, F = GetInliersRANSAC(source_keypoints, target_ke
 source_inlier_points = source_inliers.to_numpy()
 target_inlier_points = target_inliers.to_numpy()
 
+camera_indices_source = pd.DataFrame({'camera_indices': [1] * len(source_inlier_points)})
+camera_indices_target = pd.DataFrame({'camera_indices': [2] * len(target_inlier_points)})
+source_with_camera=pd.concat([camera_indices_source,source_inliers],axis=1)
+target_with_camera=pd.concat([camera_indices_target,target_inliers],axis=1)
+inlier_points_2d=pd.concat([source_with_camera,target_with_camera],ignore_index=True)
+
+#print(inlier_points_2d)
 print(bcolors.OKCYAN + "\nFundamental Matrix F:" + bcolors.OKCYAN)
 print(F, '\n')
 
@@ -170,11 +178,11 @@ PlotPtsCams([C], [R], [X], output_path, "OneCameraPoseWithPoints.png")
 ## Step 9: Non-Linear Triangulation
 ################################################################################
 print("\nPerforming Non-Linear Triangulation...")
-X_refined = NonlinearTriangulation(K, np.zeros((3, 1)), np.eye(3), C, R, source_inliers, target_inliers, X)
-print("\nOptimized 3D Points:")
+points_3D= NonlinearTriangulation(K, np.zeros((3, 1)), np.eye(3), C, R, source_inliers, target_inliers, X)
+# print("\nOptimized 3D Points:")
 #print(X_refined)
-PlotPtsCams([C,C], [R,R], [X,X_refined], output_path, "Refined3DPoints_2D.png")
-xset=target_inliers[['x','y']].to_numpy()
+PlotPtsCams([C,C], [R,R], [X,points_3D], output_path, "Refined3DPoints.png")
+# xset=target_inliers[['x','y']].to_numpy()
 # ################################################################################
 # # Step 10: PnP RANSAC
 # ################################################################################
@@ -183,118 +191,134 @@ R_g_set=[np.eye(3)]
 c_g_set.append(C.reshape(3,1))
 R_g_set.append(R)
 #print(c_g_set,R_g_set)
-for i in range(2,6):
+for i in tqdm(range(2,6)):
             source_camera_index = i
             target_camera_index = i+1
             file_path=f'../Data/new_matching{i-1}.txt'
-            print(file_path)
+            # print(file_path)
             ParseKeypoints_DF = ParseKeypoints(file_path, source_camera_index, target_camera_index)
-            # print(ParseKeypoints_DF)
+        
             source_keypoints = ParseKeypoints_DF[[0, 2, 3]]
             target_keypoints = ParseKeypoints_DF[[0, 5, 6]]
-            source_all_points = source_keypoints[[2, 3]].to_numpy()
-            target_all_points = target_keypoints[[5, 6]].to_numpy()
-            source_inliers, target_inliers, F = GetInliersRANSAC(source_keypoints, target_keypoints)
+            source_inliers, target_inliers, F = GetInliersRANSAC(source_keypoints, target_keypoints,display=False)
+            camera_indices_source = pd.DataFrame({'camera_indices': [i-1] * len(source_inliers)})
+            camera_indices_target = pd.DataFrame({'camera_indices': [i+1] * len(target_inliers)})
+            # print(camera_indices_source)
+            source_with_camera=pd.concat([camera_indices_source,source_inliers],axis=1)
+            target_with_camera=pd.concat([camera_indices_target,target_inliers],axis=1)
+            inlier_points_2d=pd.concat([inlier_points_2d,source_with_camera],ignore_index=True)
+            inlier_points_2d=pd.concat([inlier_points_2d,target_with_camera],ignore_index=True)
+            #print(inlier_points_2d)
+
             xset=target_inliers.to_numpy()
             
-            col1 = np.array([x[0][0] if isinstance(x[0], np.ndarray) else x[0] for x in xset])  # Handle nested arrays
-            col2 = np.array([x[0] for x in X_refined])  # Extract directly
-
-            # Find common values in the 0th column
+            col1 = np.array([x[0][0] if isinstance(x[0], np.ndarray) else x[0] for x in xset])
+            col2 = np.array([x[0] for x in points_3D]) 
             common_values = np.intersect1d(col1, col2)
-
-            # Extract rows with common values for both arrays
-            # xnset = np.array([row for row in xset if (row[0][0] if isinstance(row[0], np.ndarray) else row[0]) in common_values])
-            X_nrefined = np.array([row for row in X_refined if row[0] in common_values])
-             
-            # xnset data is like this  [array([1232], dtype=int64) 744.8 449.73] chnage to [1232, 744.8, 449.73]
+            X_nrefined = np.array([row for row in points_3D if row[0] in common_values])
             xnset = np.array([[
                 row[0][0] if isinstance(row[0], np.ndarray) else row[0], 
                 row[1], 
                 row[2]
             ] for row in xset if (row[0][0] if isinstance(row[0], np.ndarray) else row[0]) in common_values])
 
-            #print(xnset,X_nrefined)
-
-            Cnew, Rnew, best_inliers_X, best_inliers_x=PnPRANSAC(X_nrefined, xnset, K, M=2000, T=30)
-            # print(f'best_inliers_x:', best_inliers_x)
-            # print(Cnew,Rnew)
+            Cnew, Rnew, best_inliers_X, best_inliers_x=PnPRANSAC(X_nrefined, xnset, K, M=2000, T=30, display=False)
             Cnew, Rnew = NonlinearPnP(best_inliers_X, best_inliers_x, K, Cnew, Rnew)
-            # c_g_set.append(Cnew)
-            # R_g_set.append(Rnew)
+            c_g_set.append(Cnew)
+            R_g_set.append(Rnew)
             file_path=f'../Data/new_matching{i}.txt'
-            #print(file_path)
+
             ParseKeypoints_DF = ParseKeypoints(file_path, source_camera_index, target_camera_index)
-            # print(ParseKeypoints_DF)
+
             source_keypoints = ParseKeypoints_DF[[0, 2, 3]]
             target_keypoints = ParseKeypoints_DF[[0, 5, 6]]
-            source_all_points = source_keypoints[[2, 3]].to_numpy()
-            target_all_points = target_keypoints[[5, 6]].to_numpy()
-            source_inliers, target_inliers, F = GetInliersRANSAC(source_keypoints, target_keypoints)
+            source_inliers, target_inliers, F = GetInliersRANSAC(source_keypoints, target_keypoints,display=False)
+            camera_indices_source = pd.DataFrame({'camera_indices': [i] * len(source_inliers)})
+            camera_indices_target = pd.DataFrame({'camera_indices': [i+1] * len(target_inliers)})
+
+            
+            source_with_camera=pd.concat([camera_indices_source,source_inliers],axis=1)
+            target_with_camera=pd.concat([camera_indices_target,target_inliers],axis=1)
+            inlier_points_2d=pd.concat([inlier_points_2d,source_with_camera],ignore_index=True)
+            inlier_points_2d=pd.concat([inlier_points_2d,target_with_camera],ignore_index=True)
+
+
+            #print(inlier_points_2d)
             X_new = LinearTriangulation(K, c_g_set[i-1], R_g_set[i-1], Cnew, Rnew, source_inliers, target_inliers)
-            #print(X_new)
+            
+
             X_new = NonlinearTriangulation(K, c_g_set[i-1], R_g_set[i-1], Cnew, Rnew, source_inliers, target_inliers, X_new)
-            X_refined=np.concatenate((X_refined,X_new))
-            # print(X_refined)
-            # 1. n_cameras: Count of cameras in your system
-            n_cameras = len(c_g_set)  # Since c_g_set contains all camera centers
+            points_3D=np.concatenate((points_3D,X_new))
+            
 
-            # 2. n_points: Count of unique 3D points
-            n_points = X_refined.shape[0]  # Total number of 3D points
+            # print(c_g_set)
+            n_cameras = len(c_g_set) 
 
-            # 3 & 4. camera_indices and point_indices
-            # You need to create these arrays based on your observations
+            n_points = points_3D.shape[0]  
             camera_indices = []
             point_indices = []
-            xall = []  # Collection of 2D points
+            xall = [] 
 
-            # Create point_map from X_refined
-            point_map = {int(point_id): idx for idx, point_id in enumerate(X_refined[:, 0])}
 
-            # Iterate through your matching files to build the indices
-            for i in range(2, 6):
-                file_path = f'../Data/new_matching{i-1}.txt'
-                ParseKeypoints_DF = ParseKeypoints(file_path, i, i+1)
+            point_map = {int(point_id): idx for idx, point_id in enumerate(points_3D[:, 0])}
+
+
+
+            point_ids = inlier_points_2d['Id'].values
+            x_coords = inlier_points_2d[['x','y']].values 
+            camera_id= inlier_points_2d['camera_indices'].values
+
+            for pid, coords,id in zip(point_ids, x_coords,camera_id):
+                if int(pid[0]) in point_map:
+                    camera_indices.append(id)
+                    point_indices.append(point_map[int(pid[0])])
+                    xall.append(coords)
+
+  
+            # for i in range(2, 6):
+            #     file_path = f'../Data/new_matching{i-1}.txt'
+            #     ParseKeypoints_DF = ParseKeypoints(file_path, i, i+1)
                 
-                # Get point IDs and coordinates from the DataFrame
-                point_ids = ParseKeypoints_DF[0].values
-                x_coords = ParseKeypoints_DF[[2, 3]].values  # Get x,y coordinates
-                
-                # Filter only points that exist in our point_map
-                for pid, coords in zip(point_ids, x_coords):
-                    if int(pid) in point_map:
-                        camera_indices.append(i-2)
-                        point_indices.append(point_map[int(pid)])
-                        xall.append(coords)  # Add the 2D point coordinates
 
-            # Convert to numpy arrays
+            #     point_ids = ParseKeypoints_DF[0].values
+            #     x_coords = ParseKeypoints_DF[[2, 3]].values  
+                
+
+            #     for pid, coords in zip(point_ids, x_coords):
+            #         if int(pid) in point_map:
+            #             camera_indices.append(i-2)
+            #             point_indices.append(point_map[int(pid)])
+            #             xall.append(coords)
+
+
             camera_indices = np.array(camera_indices)
             point_indices = np.array(point_indices)
-            xall = np.array(xall)  # Convert 2D points to numpy array
+            xall = np.array(xall)
 
 
            
 
             try:
-                CoptAll, RoptAll, XoptAll = BundleAdjustment(c_g_set, R_g_set, X_refined, K,
+                CoptAll, RoptAll, XoptAll = BundleAdjustment(c_g_set, R_g_set, points_3D, K,
                                                             n_cameras, n_points, camera_indices, point_indices, xall)
             except ValueError as e:
                 print(f"\nError in Bundle Adjustment:")
                 print(f"Error message: {str(e)}")
                 raise
-
+            # print(CoptAll,RoptAll,XoptAll)
             c_g_set=CoptAll
             R_g_set=RoptAll
+            points_3D=XoptAll
             
             
 
-print(c_g_set)
-print(R_g_set)
+# print(c_g_set)
+# print(R_g_set)
 
 
 c_g_set=np.array(c_g_set)
 R_g_set=np.array(R_g_set)
-PlotPtsCams(c_g_set, R_g_set, [X_refined], output_path, "afterallCameraProjection_2D.png")
+PlotfinalCams(c_g_set, R_g_set, [points_3D], output_path, "afterallCameraProjection_2D.png")
 ################################################################################
 # Step 11: NonLinearPnP
 # NonLinearPnP: Refines the camera pose (position and orientation) using non-linear 

@@ -72,7 +72,7 @@ def NonlinearPnP(Xs, xs, K, Cnew, Rnew):
     r = Rotation.from_matrix(Rnew)
     quat = r.as_quat()
     
-    print(f"initial guess",Rnew,Cnew)
+    # print(f"initial guess",Rnew,Cnew)
     # Initial parameters for optimization: flatten camera position and convert rotation to quaternion
     C_init = Cnew.flatten()  # Initial camera position as a 1D array (3,)
     q_init = quat  # Initial rotation as a quaternion (4,)
