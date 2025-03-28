@@ -86,7 +86,7 @@ def LinearPnP(X, x, K):
 
 
 # Function to perform PnP using RANSAC to find the best camera pose with inliers
-def PnPRANSAC(Xset, xset, K, M=2000, T=10):
+def PnPRANSAC(Xset, xset, K, M=2000, T=10, display=True):
     """
     PnPRANSAC: Performs Perspective-n-Point (PnP) with RANSAC to robustly estimate the
     camera pose (position and orientation) from 2D-3D correspondences.
@@ -109,7 +109,7 @@ def PnPRANSAC(Xset, xset, K, M=2000, T=10):
     # Total number of correspondences
     n_points = len(Xset)
     
-    for i in tqdm(range(M)):
+    for i in tqdm(range(M),disable=not display):
         # Randomly select 6 2D-3D pairs
         sample_indices = random.sample(range(n_points), 6)
                 

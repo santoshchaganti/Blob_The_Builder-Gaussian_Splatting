@@ -72,7 +72,7 @@ def NonlinearPnP(Xs, xs, K, Cnew, Rnew):
     r = Rotation.from_matrix(Rnew)
     quat = r.as_quat()
     
-    print(f"initial guess",Rnew,Cnew)
+    # print(f"initial guess",Rnew,Cnew)
     # Initial parameters for optimization: flatten camera position and convert rotation to quaternion
     C_init = Cnew.flatten()  # Initial camera position as a 1D array (3,)
     q_init = quat  # Initial rotation as a quaternion (4,)
@@ -87,7 +87,7 @@ def NonlinearPnP(Xs, xs, K, Cnew, Rnew):
     #print(X_data,x_data)
     # Run non-linear optimization to minimize reprojection error
     # result = least_squares(reprojection_loss, x0, args=(X_data, x_data, K), verbose=2, method='lm')
-    result = least_squares(reprojection_loss, x0, args=(X_data, x_data, K),verbose=2, method='trf',  # Trust-region reflective for handling nonlinearity
+    result = least_squares(reprojection_loss, x0, args=(X_data, x_data, K), method='trf',  # Trust-region reflective for handling nonlinearity
     # bounds=(lb, ub),  # Define parameter bounds
     loss='soft_l1',  # Robust loss for outliers and nonlinearity
     ftol=1e-8,

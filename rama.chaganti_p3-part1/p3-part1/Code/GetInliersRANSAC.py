@@ -4,7 +4,7 @@ import random
 from tqdm import tqdm
 from EstimateFundamentalMatrix import EstimateFundamentalMatrix
 
-def GetInliersRANSAC(x1All, x2All, M=1500, T=0.1):
+def GetInliersRANSAC(x1All, x2All, M=1500, T=0.1,display=True):
     """
     Estimates the Fundamental matrix using RANSAC and identifies inlier matches
     between two sets of points, rejecting outliers.
@@ -20,7 +20,7 @@ def GetInliersRANSAC(x1All, x2All, M=1500, T=0.1):
         x2Inlier (DataFrame): Inlier points in the target image.
         FBest (ndarray): The best estimated Fundamental matrix.
     """
-    print("Running RANSAC...")
+    # print("Running RANSAC...")
     # print("Source Keypoints Columns:", x1All.columns)
     # print("Target Keypoints Columns:", x2All.columns)
     
@@ -34,7 +34,7 @@ def GetInliersRANSAC(x1All, x2All, M=1500, T=0.1):
     x2Inlier = None
 
     # RANSAC iterations
-    for i in tqdm(range(M)):
+    for i in tqdm(range(M),disable=not display):
         # Step 1: Randomly select 8 pairs of points from the source and target images
         indices = random.sample(range(x1All.shape[0]), 8)
         x1 = x1All[indices]

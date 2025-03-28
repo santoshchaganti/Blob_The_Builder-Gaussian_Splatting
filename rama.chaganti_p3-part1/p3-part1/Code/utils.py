@@ -310,3 +310,51 @@ def PlotPtsCams(C_list, R_list, X_list, save_dir, filename="OneCameraPoseWithPoi
     plt.savefig(save_path)
     plt.close()
     print(f"2D plot saved at {save_path}")
+
+
+
+def PlotfinalCams(C_list, R_list, X_list, save_dir, filename="CameraPosesWithPoints_2D.png"):
+    """
+    Plots 3D points and camera poses on a 2D XZ plane.
+    Camera poses are plotted independently from the input, with default positions and orientations.
+    
+    Args:
+        C_list (list): List containing the camera center (3x1 array).
+        R_list (list): List containing the rotation matrix (3x3 array) for each camera.
+        X_list (list): List containing the 3D points (Nx4 array, with [ID, X, Y, Z]).
+        save_dir (str): Directory to save the output plot.
+        filename (str): Name of the output plot file.
+    """
+
+    colormap = ['r', 'b', 'g', 'y', 'c', 'm']  # Colors for each camera
+    plt.figure()
+
+    # Plotting predefined cameras (fixed positions and orientations)
+    for i, (C, R) in enumerate(zip(C_list, R_list)):
+        C = C.flatten()  # Flatten the camera center to a 1D array
+        
+        # Plot camera positions as arrows indicating orientation
+        rotation_vec = Rotation.from_matrix(R).as_rotvec()
+        rotation_deg = np.rad2deg(rotation_vec)
+        t = mpl.markers.MarkerStyle(marker=mpl.markers.CARETDOWN)
+        t._transform = t.get_transform().rotate_deg(int(rotation_deg[1]))
+        plt.scatter(C[0], C[2], marker=t, s=250, color=colormap[i % len(colormap)], label=f"Camera {i+1}")
+
+    # Plot 3D points on XZ plane
+    for X in X_list:
+        X_points = np.array(X)[:, 1:4]  # Extract X, Y, Z (ignoring ID)
+        plt.scatter(X_points[:, 0], X_points[:, 2], s=4, color='k', alpha=0.6)
+
+    # Set axis labels, title, and legend
+    plt.xlabel("X")
+    plt.ylabel("Z")
+    plt.xlim([-15, 25])  # Set appropriate X limits
+    plt.ylim([-5, 30])   # Set appropriate Z limits
+    plt.title("Camera Poses and 3D Points (XZ Plane)")
+    plt.legend()
+
+    # Save the plot
+    save_path = f"{save_dir}/{filename}"
+    plt.savefig(save_path)
+    plt.close()
+    print(f"2D plot saved at {save_path}")
